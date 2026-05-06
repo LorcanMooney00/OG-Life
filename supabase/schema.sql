@@ -143,7 +143,7 @@ create trigger shopping_items_prevent_owner_change
   for each row execute function public.prevent_change_created_by();
 
 -- ---------------------------------------------------------------------------
--- Push subscriptions (OneSignal player id per device)
+-- Push subscriptions (OneSignal web subscription id per device; column name is legacy “player”)
 -- ---------------------------------------------------------------------------
 create table if not exists public.push_subscriptions (
   id uuid primary key default gen_random_uuid(),

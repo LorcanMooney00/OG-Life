@@ -16,6 +16,10 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_ANON_KEY: string
   /** Production site origin for email redirects (optional in dev). */
   readonly VITE_SITE_URL?: string
+  /** OneSignal app ID (Keys & IDs in dashboard). Web platform must match this site URL. */
+  readonly VITE_ONESIGNAL_APP_ID?: string
+  /** Set to "true" to initialize OneSignal on localhost (default: skip, like Lifestyle-App). */
+  readonly VITE_ONESIGNAL_ALLOW_LOCALHOST?: string
 }
 
 interface ImportMeta {

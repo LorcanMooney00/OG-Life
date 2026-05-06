@@ -6,6 +6,12 @@ import {
   useState,
 } from 'react'
 import type { User } from '@supabase/supabase-js'
+import {
+  initOneSignal,
+  isOneSignalConfigured,
+  linkOneSignalUser,
+  unlinkOneSignalUserForSignOut,
+} from './onesignal'
 import { isSupabaseConfigured, supabase } from './supabaseClient'
 
 type AuthContextValue = {
@@ -55,6 +61,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
+  useEffect(() => {
+    if (!isSupabaseConfigured) return
+    void initOneSignal()
+  }, [])
+
+  useEffect(() => {
+    if (!user?.id || !isOneSignalConfigured()) return
+    void linkOneSignalUser(user.id)
+  }, [user?.id])
+
   const value = useMemo(() => ({ user, loading }), [user, loading])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
@@ -100,6 +116,9 @@ export async function signOut() {
   if (!supabase) {
     return { error: new Error('Supabase is not configured') }
   }
+  const { data: sessionData } = await supabase.auth.getSession()
+  const uid = sessionData.session?.user?.id
+  await unlinkOneSignalUserForSignOut(uid)
   return supabase.auth.signOut({ scope: 'local' })
 }
 

@@ -3,6 +3,14 @@ import { Link } from 'react-router-dom'
 import { useInstallPrompt } from '../contexts/InstallPromptContext'
 import { signOut, useAuth } from '../lib/auth'
 import type { PartnerSummary } from '../types'
+import {
+  initOneSignal,
+  isOneSignalConfigured,
+  isOneSignalRuntimeEnabled,
+  optOutOneSignalOnDevice,
+  promptOneSignalPush,
+  refreshOneSignalPushState,
+} from '../lib/onesignal'
 import { supabase } from '../lib/supabaseClient'
 
 export default function SettingsPage() {
@@ -13,6 +21,13 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [loadingPartners, setLoadingPartners] = useState(true)
+  const [osPush, setOsPush] = useState<{
+    ready: boolean
+    supported: boolean
+    subscribed: boolean
+    skippedLocalhost: boolean
+  }>({ ready: false, supported: false, subscribed: false, skippedLocalhost: false })
+  const [pushBusy, setPushBusy] = useState(false)
   const {
     deferred: deferredInstall,
     installMessage,
@@ -72,6 +87,54 @@ export default function SettingsPage() {
   useEffect(() => {
     void loadPartners()
   }, [loadPartners])
+
+  const refreshOsPush = useCallback(async () => {
+    if (!isOneSignalConfigured()) {
+      setOsPush({ ready: true, supported: false, subscribed: false, skippedLocalhost: false })
+      return
+    }
+    if (!isOneSignalRuntimeEnabled()) {
+      setOsPush({ ready: true, supported: false, subscribed: false, skippedLocalhost: true })
+      return
+    }
+    await initOneSignal()
+    const { supported, subscribed } = await refreshOneSignalPushState()
+    setOsPush({ ready: true, supported, subscribed, skippedLocalhost: false })
+  }, [])
+
+  useEffect(() => {
+    void refreshOsPush()
+  }, [refreshOsPush, user?.id])
+
+  const handleEnablePush = async () => {
+    if (!user) return
+    setPushBusy(true)
+    setError(null)
+    try {
+      await promptOneSignalPush()
+      await refreshOsPush()
+      setMessage('If a prompt appeared, choose Allow. Your device is linked in OneSignal.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not show notification prompt')
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
+  const handleDisablePush = async () => {
+    if (!user) return
+    setPushBusy(true)
+    setError(null)
+    try {
+      await optOutOneSignalOnDevice(user.id)
+      await refreshOsPush()
+      setMessage('Opted out of push on this device.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not turn off push')
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   const handleLinkPartner = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -218,6 +281,50 @@ export default function SettingsPage() {
               </button>
             </p>
           )}
+        </section>
+
+        <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
+          <p className="text-[15px] font-semibold text-white">Push notifications (OneSignal)</p>
+          <p className="mt-1 text-[13px] leading-snug text-[#8e8e93]">
+            Delivered through OneSignal. This app uses a scoped service worker under <code className="text-indigo-300/90">/onesignal/</code> so it can run alongside the PWA worker (Lifestyle had no PWA, so it used OneSignal’s default root worker). Configure custom worker URLs in OneSignal to match.
+          </p>
+          {!isOneSignalConfigured() ? (
+            <p className="mt-3 text-[13px] text-[#8e8e93]">
+              Add <code className="text-indigo-300">VITE_ONESIGNAL_APP_ID</code> to your env and rebuild. Use the same
+              Web app in OneSignal as this deployment’s origin.
+            </p>
+          ) : !osPush.ready ? (
+            <p className="mt-3 text-[13px] text-[#8e8e93]">Checking this device…</p>
+          ) : osPush.skippedLocalhost ? (
+            <p className="mt-3 text-[13px] text-amber-200/90">
+              OneSignal is skipped on <code className="text-indigo-300/90">localhost</code> (same idea as Lifestyle). Open your deployed HTTPS URL to test push, or set{' '}
+              <code className="text-indigo-300/90">VITE_ONESIGNAL_ALLOW_LOCALHOST=true</code> for local experiments.
+            </p>
+          ) : !osPush.supported ? (
+            <p className="mt-3 text-[13px] text-amber-200/90">This browser does not support web push.</p>
+          ) : osPush.subscribed ? (
+            <button
+              type="button"
+              disabled={pushBusy}
+              onClick={() => void handleDisablePush()}
+              className="mt-4 w-full rounded-[10px] border border-[#3a3a3c] bg-[#2c2c2e] py-3 text-[17px] font-semibold text-white hover:bg-[#3a3a3c] disabled:opacity-50"
+            >
+              {pushBusy ? 'Working…' : 'Turn off notifications on this device'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={pushBusy}
+              onClick={() => void handleEnablePush()}
+              className="mt-4 w-full rounded-[10px] bg-indigo-600 py-3 text-[17px] font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+            >
+              {pushBusy ? 'Working…' : 'Turn on notifications'}
+            </button>
+          )}
+          <p className="mt-3 text-[12px] leading-snug text-[#8e8e93]">
+            Subscription IDs are saved to <code className="text-indigo-300/90">push_subscriptions.onesignal_player_id</code>{' '}
+            for your own automations; campaigns can also be sent from the OneSignal dashboard.
+          </p>
         </section>
 
         <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
