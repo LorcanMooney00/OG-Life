@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { useDominantHorizontalSwipe } from '../hooks/useDominantHorizontalSwipe'
+import { useLockingHorizontalSwipeRef } from '../hooks/useDominantHorizontalSwipe'
 import type { ShoppingItem } from '../types'
 import { createId } from '../lib/id'
 
@@ -226,13 +226,14 @@ export function ShoppingListView({ items, onChange }: Props) {
     setPage((p) => (p === 'add' ? 'list' : p))
   }, [editing])
 
-  const listSwipe = useDominantHorizontalSwipe({
+  const swipeSurfaceRef = useLockingHorizontalSwipeRef({
     onSwipeLeft: onListSwipeLeft,
     onSwipeRight: onListSwipeRight,
+    enabled: !editing,
   })
 
   return (
-    <div className="ios-font space-y-4" {...listSwipe}>
+    <div ref={swipeSurfaceRef} className="ios-font space-y-4">
       <div className="space-y-2 pt-0.5">
         <div className="flex items-center justify-center gap-2">
           <button

@@ -241,7 +241,7 @@ export default function OgLifeApp() {
 
       <main
         {...tabSwipe}
-        className="mx-auto w-full min-w-0 max-w-lg min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-4 [-webkit-overflow-scrolling:touch]"
+        className="mx-auto w-full min-w-0 max-w-lg min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 [touch-action:pan-x_pan-y] [-webkit-overflow-scrolling:touch]"
         style={{
           paddingBottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))',
           paddingLeft: 'max(1rem, env(safe-area-inset-left))',
