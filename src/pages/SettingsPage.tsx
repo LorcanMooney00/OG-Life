@@ -177,6 +177,14 @@ export default function SettingsPage() {
         </section>
 
         <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
+          <p className="text-[15px] font-semibold text-white">Install on your device</p>
+          <p className="mt-1 text-[13px] leading-snug text-[#8e8e93]">
+            This site can be installed like an app. iPhone: Safari → Share → Add to Home Screen.
+            Android / Chrome / Edge: menu → Install app (wording may vary).
+          </p>
+        </section>
+
+        <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
           <p className="text-[15px] font-semibold text-white">Link partner</p>
           <p className="mt-1 text-[13px] leading-snug text-[#8e8e93]">
             Enter the email they used to sign up. We’ll connect both accounts so you share
