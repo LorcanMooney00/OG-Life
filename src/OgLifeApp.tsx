@@ -139,130 +139,129 @@ export default function OgLifeApp() {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-slate-950 text-slate-100">
-      <div className="min-h-0 w-full min-w-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
-        <header
-          className="sticky top-0 z-30 shrink-0 border-b border-slate-800 bg-slate-950/95 backdrop-blur-md"
-          style={{
-            paddingTop: 'max(0.75rem, env(safe-area-inset-top))',
-            paddingLeft: 'max(1rem, env(safe-area-inset-left))',
-            paddingRight: 'max(1rem, env(safe-area-inset-right))',
-          }}
-        >
-          <div className="mx-auto max-w-lg pb-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-300/90">
-                  OG Life
-                </p>
-                <h1 className="text-lg font-semibold leading-tight text-white sm:text-xl">
-                  {screen === 'home'
-                    ? 'Home'
-                    : screen === 'calendar'
-                      ? 'Calendar'
-                      : 'Shopping list'}
-                </h1>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  {screen === 'home'
-                    ? 'Your quick dashboard'
-                    : 'Synced with your account · swipe-friendly'}
-                </p>
-              </div>
-              <Link
-                to="/app/settings"
-                className="shrink-0 rounded-[10px] bg-[#2c2c2e] px-3 py-2 text-xs font-semibold text-[#0a84ff] ring-1 ring-white/[0.08] active:bg-[#3a3a3c]"
-              >
-                Account
-              </Link>
+      <header
+        className="shrink-0 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md"
+        style={{
+          paddingTop: 'max(0.75rem, env(safe-area-inset-top))',
+          paddingLeft: 'max(1rem, env(safe-area-inset-left))',
+          paddingRight: 'max(1rem, env(safe-area-inset-right))',
+        }}
+      >
+        <div className="mx-auto max-w-lg pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-300/90">
+                OG Life
+              </p>
+              <h1 className="text-lg font-semibold leading-tight text-white sm:text-xl">
+                {screen === 'home'
+                  ? 'Home'
+                  : screen === 'calendar'
+                    ? 'Calendar'
+                    : 'Shopping list'}
+              </h1>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {screen === 'home'
+                  ? 'Your quick dashboard'
+                  : 'Synced with your account · swipe-friendly'}
+              </p>
             </div>
-            {syncNote && (
-              <p className="mt-2 rounded-lg border border-amber-700/40 bg-amber-900/20 px-3 py-2 text-xs text-amber-200">
-                {syncNote}
-              </p>
-            )}
-            {deferred && (
-              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-indigo-500/40 bg-indigo-950/50 px-3 py-2.5">
-                <p className="min-w-0 flex-1 text-[13px] text-indigo-100/95">
-                  Install OG Life on this phone for a full-screen shortcut.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void promptInstall()}
-                  className="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white"
-                >
-                  Install
-                </button>
-                <button
-                  type="button"
-                  onClick={dismissDeferred}
-                  className="shrink-0 text-xs text-[#8e8e93] underline"
-                >
-                  Not now
-                </button>
-              </div>
-            )}
-            {installMessage && (
-              <p className="mt-2 text-[13px] text-green-300/90">
-                {installMessage}{' '}
-                <button
-                  type="button"
-                  onClick={clearInstallMessage}
-                  className="text-[#0a84ff] underline"
-                >
-                  OK
-                </button>
-              </p>
-            )}
+            <Link
+              to="/app/settings"
+              className="shrink-0 rounded-[10px] bg-[#2c2c2e] px-3 py-2 text-xs font-semibold text-[#0a84ff] ring-1 ring-white/[0.08] active:bg-[#3a3a3c]"
+            >
+              Account
+            </Link>
           </div>
-        </header>
-
-        <main
-          className="mx-auto w-full min-w-0 max-w-lg px-4 py-4"
-          style={{
-            paddingBottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))',
-            paddingLeft: 'max(1rem, env(safe-area-inset-left))',
-            paddingRight: 'max(1rem, env(safe-area-inset-right))',
-          }}
-        >
-          {screen === 'home' ? (
-            <div className="ios-font space-y-4">
-              <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
-                <p className="text-[13px] uppercase tracking-wide text-[#8e8e93]">
-                  Today at a glance
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  <div className="rounded-[10px] bg-[#2c2c2e] p-3 ring-1 ring-white/[0.06]">
-                    <p className="text-[12px] text-[#8e8e93]">Upcoming events</p>
-                    <p className="mt-1 text-2xl font-semibold text-white">{upcomingEvents}</p>
-                  </div>
-                  <div className="rounded-[10px] bg-[#2c2c2e] p-3 ring-1 ring-white/[0.06]">
-                    <p className="text-[12px] text-[#8e8e93]">Shopping left</p>
-                    <p className="mt-1 text-2xl font-semibold text-white">{shoppingRemaining}</p>
-                  </div>
-                </div>
-              </section>
-
+          {syncNote && (
+            <p className="mt-2 rounded-lg border border-amber-700/40 bg-amber-900/20 px-3 py-2 text-xs text-amber-200">
+              {syncNote}
+            </p>
+          )}
+          {deferred && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-indigo-500/40 bg-indigo-950/50 px-3 py-2.5">
+              <p className="min-w-0 flex-1 text-[13px] text-indigo-100/95">
+                Install OG Life on this phone for a full-screen shortcut.
+              </p>
               <button
                 type="button"
-                onClick={() => setScreen('calendar')}
-                className="w-full rounded-[12px] bg-[#2c2c2e] p-4 text-left ring-1 ring-white/[0.08] transition active:bg-[#3a3a3c]"
+                onClick={() => void promptInstall()}
+                className="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white"
               >
-                <p className="text-[17px] font-semibold text-white">📅 Calendar</p>
-                <p className="mt-1 text-[13px] text-[#8e8e93]">
-                  Plan events, recurring reminders, and your week.
-                </p>
+                Install
               </button>
-
               <button
                 type="button"
-                onClick={() => setScreen('shopping')}
-                className="w-full rounded-[12px] bg-[#2c2c2e] p-4 text-left ring-1 ring-white/[0.08] transition active:bg-[#3a3a3c]"
+                onClick={dismissDeferred}
+                className="shrink-0 text-xs text-[#8e8e93] underline"
               >
-                <p className="text-[17px] font-semibold text-white">🛒 Shopping list</p>
-                <p className="mt-1 text-[13px] text-[#8e8e93]">
-                  Add quickly, tick off items, and keep things tidy.
-                </p>
+                Not now
               </button>
             </div>
+          )}
+          {installMessage && (
+            <p className="mt-2 text-[13px] text-green-300/90">
+              {installMessage}{' '}
+              <button
+                type="button"
+                onClick={clearInstallMessage}
+                className="text-[#0a84ff] underline"
+              >
+                OK
+              </button>
+            </p>
+          )}
+        </div>
+      </header>
+
+      <main
+        className="mx-auto w-full min-w-0 max-w-lg min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-4 [-webkit-overflow-scrolling:touch]"
+        style={{
+          paddingBottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))',
+          paddingLeft: 'max(1rem, env(safe-area-inset-left))',
+          paddingRight: 'max(1rem, env(safe-area-inset-right))',
+        }}
+      >
+        {screen === 'home' ? (
+          <div className="ios-font space-y-4">
+            <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
+              <p className="text-[13px] uppercase tracking-wide text-[#8e8e93]">
+                Today at a glance
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className="rounded-[10px] bg-[#2c2c2e] p-3 ring-1 ring-white/[0.06]">
+                  <p className="text-[12px] text-[#8e8e93]">Upcoming events</p>
+                  <p className="mt-1 text-2xl font-semibold text-white">{upcomingEvents}</p>
+                </div>
+                <div className="rounded-[10px] bg-[#2c2c2e] p-3 ring-1 ring-white/[0.06]">
+                  <p className="text-[12px] text-[#8e8e93]">Shopping left</p>
+                  <p className="mt-1 text-2xl font-semibold text-white">{shoppingRemaining}</p>
+                </div>
+              </div>
+            </section>
+
+            <button
+              type="button"
+              onClick={() => setScreen('calendar')}
+              className="w-full rounded-[12px] bg-[#2c2c2e] p-4 text-left ring-1 ring-white/[0.08] transition active:bg-[#3a3a3c]"
+            >
+              <p className="text-[17px] font-semibold text-white">📅 Calendar</p>
+              <p className="mt-1 text-[13px] text-[#8e8e93]">
+                Plan events, recurring reminders, and your week.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setScreen('shopping')}
+              className="w-full rounded-[12px] bg-[#2c2c2e] p-4 text-left ring-1 ring-white/[0.08] transition active:bg-[#3a3a3c]"
+            >
+              <p className="text-[17px] font-semibold text-white">🛒 Shopping list</p>
+              <p className="mt-1 text-[13px] text-[#8e8e93]">
+                Add quickly, tick off items, and keep things tidy.
+              </p>
+            </button>
+          </div>
         ) : screen === 'calendar' ? (
           <CalendarView
             events={events}
@@ -272,8 +271,7 @@ export default function OgLifeApp() {
         ) : (
           <ShoppingListView items={shopping} onChange={handleShoppingChange} />
         )}
-        </main>
-      </div>
+      </main>
 
       <nav
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-800 bg-slate-950/95 backdrop-blur-lg"
