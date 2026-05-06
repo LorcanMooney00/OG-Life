@@ -27,7 +27,7 @@ export default function LoginPage() {
 
   if (!isSupabaseConfigured) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center bg-slate-950 px-4 text-slate-200">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-slate-950 px-4 text-slate-200">
         <p className="text-center text-sm text-slate-400">
           Configure Supabase env vars to sign in.
         </p>
@@ -111,7 +111,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className="flex min-h-dvh items-center justify-center px-4"
+      className="flex min-h-0 flex-1 items-center justify-center bg-slate-950 px-4"
       style={{
         paddingTop: 'max(1rem, env(safe-area-inset-top))',
         paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',

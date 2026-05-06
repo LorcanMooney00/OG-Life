@@ -60,7 +60,7 @@ export default function ResetPasswordPage() {
 
   if (!isSupabaseConfigured) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-slate-950 px-4 text-slate-400">
+      <div className="flex min-h-0 flex-1 items-center justify-center bg-slate-950 px-4 text-slate-400">
         Supabase is not configured.
       </div>
     )
@@ -68,7 +68,7 @@ export default function ResetPasswordPage() {
 
   if (isValidSession === null) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-slate-950 text-slate-400">
+      <div className="flex min-h-0 flex-1 items-center justify-center bg-slate-950 text-slate-400">
         Loading…
       </div>
     )
@@ -77,7 +77,7 @@ export default function ResetPasswordPage() {
   if (isValidSession === false) {
     return (
       <div
-        className="flex min-h-dvh items-center justify-center px-4"
+        className="flex min-h-0 flex-1 items-center justify-center bg-slate-950 px-4"
         style={{
           paddingTop: 'max(1rem, env(safe-area-inset-top))',
           paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
@@ -107,7 +107,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div
-      className="flex min-h-dvh items-center justify-center px-4"
+      className="flex min-h-0 flex-1 items-center justify-center bg-slate-950 px-4"
       style={{
         paddingTop: 'max(1rem, env(safe-area-inset-top))',
         paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',

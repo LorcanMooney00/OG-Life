@@ -145,37 +145,38 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-slate-950 text-slate-100">
-      <header
-        className="shrink-0 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md"
-        style={{
-          paddingTop: 'max(0.75rem, env(safe-area-inset-top))',
-          paddingLeft: 'max(1rem, env(safe-area-inset-left))',
-          paddingRight: 'max(1rem, env(safe-area-inset-right))',
-        }}
-      >
-        <div className="mx-auto flex max-w-lg items-center gap-3 pb-3">
-          <Link
-            to="/app"
-            className="rounded-lg px-2 py-1 text-sm font-medium text-[#0a84ff] hover:bg-white/5"
-          >
-            ← Back
-          </Link>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-300/90">
-              OG Life
-            </p>
-            <h1 className="text-lg font-semibold text-white">Account & partner</h1>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-slate-950 text-slate-100">
+      <div className="min-h-0 w-full min-w-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+        <header
+          className="sticky top-0 z-30 shrink-0 border-b border-slate-800 bg-slate-950/95 backdrop-blur-md"
+          style={{
+            paddingTop: 'max(0.75rem, env(safe-area-inset-top))',
+            paddingLeft: 'max(1rem, env(safe-area-inset-left))',
+            paddingRight: 'max(1rem, env(safe-area-inset-right))',
+          }}
+        >
+          <div className="mx-auto flex max-w-lg items-center gap-3 pb-3">
+            <Link
+              to="/app"
+              className="rounded-lg px-2 py-1 text-sm font-medium text-[#0a84ff] hover:bg-white/5"
+            >
+              ← Back
+            </Link>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-300/90">
+                OG Life
+              </p>
+              <h1 className="text-lg font-semibold text-white">Account & partner</h1>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main
-        className="mx-auto w-full max-w-lg min-h-0 flex-1 touch-pan-y space-y-6 overflow-y-auto px-4 py-4"
-        style={{
-          paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))',
-        }}
-      >
+        <main
+          className="mx-auto w-full min-w-0 max-w-lg space-y-6 px-4 py-4"
+          style={{
+            paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))',
+          }}
+        >
         <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
           <p className="text-[13px] uppercase tracking-wide text-[#8e8e93]">Signed in as</p>
           <p className="mt-1 truncate text-[17px] font-medium text-white">
@@ -297,7 +298,8 @@ export default function SettingsPage() {
         >
           Sign out
         </button>
-      </main>
+        </main>
+      </div>
     </div>
   )
 }

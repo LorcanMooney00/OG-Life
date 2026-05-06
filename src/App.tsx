@@ -7,16 +7,18 @@ import SettingsPage from './pages/SettingsPage'
 
 function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route element={<RequireAuth />}>
-        <Route path="/app/settings" element={<SettingsPage />} />
-        <Route path="/app" element={<OgLifeApp />} />
-      </Route>
-      <Route path="/" element={<Navigate to="/app" replace />} />
-      <Route path="*" element={<Navigate to="/app" replace />} />
-    </Routes>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route element={<RequireAuth />}>
+          <Route path="/app/settings" element={<SettingsPage />} />
+          <Route path="/app" element={<OgLifeApp />} />
+        </Route>
+        <Route path="/" element={<Navigate to="/app" replace />} />
+        <Route path="*" element={<Navigate to="/app" replace />} />
+      </Routes>
+    </div>
   )
 }
 
