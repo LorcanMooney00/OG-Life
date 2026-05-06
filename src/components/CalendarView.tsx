@@ -40,6 +40,8 @@ function dotClass(i: number) {
 type Props = {
   events: CalendarEvent[]
   onChange: (next: CalendarEvent[]) => void
+  /** Lets parent refetch cloud rows for the visible month (efficient sync). */
+  onVisibleMonthChange?: (year: number, monthIndex: number) => void
 }
 
 type CalendarOccurrence = CalendarEvent & {
@@ -93,7 +95,7 @@ function ChevronRight({ className }: { className?: string }) {
   )
 }
 
-export function CalendarView({ events, onChange }: Props) {
+export function CalendarView({ events, onChange, onVisibleMonthChange }: Props) {
   const nowInit = useMemo(() => new Date(), [])
   const [cursor, setCursor] = useState(
     () => new Date(nowInit.getFullYear(), nowInit.getMonth(), 1),
@@ -106,6 +108,10 @@ export function CalendarView({ events, onChange }: Props) {
 
   const year = cursor.getFullYear()
   const month = cursor.getMonth()
+
+  useEffect(() => {
+    onVisibleMonthChange?.(year, month)
+  }, [year, month, onVisibleMonthChange])
   const first = new Date(year, month, 1)
   const last = new Date(year, month + 1, 0)
   const daysInMonth = last.getDate()
