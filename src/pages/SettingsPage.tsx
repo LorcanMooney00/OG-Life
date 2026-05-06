@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useInstallPrompt } from '../contexts/InstallPromptContext'
 import { signOut, useAuth } from '../lib/auth'
 import type { PartnerSummary } from '../types'
 import { supabase } from '../lib/supabaseClient'
@@ -12,9 +13,12 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [loadingPartners, setLoadingPartners] = useState(true)
-  const [deferredInstall, setDeferredInstall] =
-    useState<BeforeInstallPromptEvent | null>(null)
-  const [installOutcome, setInstallOutcome] = useState<string | null>(null)
+  const {
+    deferred: deferredInstall,
+    installMessage,
+    promptInstall,
+    clearInstallMessage,
+  } = useInstallPrompt()
 
   const loadPartners = useCallback(async () => {
     if (!supabase || !user) {
@@ -68,32 +72,6 @@ export default function SettingsPage() {
   useEffect(() => {
     void loadPartners()
   }, [loadPartners])
-
-  useEffect(() => {
-    const onBip = (e: BeforeInstallPromptEvent) => {
-      e.preventDefault()
-      setDeferredInstall(e)
-    }
-    const onInstalled = () => {
-      setDeferredInstall(null)
-      setInstallOutcome('App installed.')
-    }
-    window.addEventListener('beforeinstallprompt', onBip)
-    window.addEventListener('appinstalled', onInstalled)
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onBip)
-      window.removeEventListener('appinstalled', onInstalled)
-    }
-  }, [])
-
-  const runDeferredInstall = async () => {
-    if (!deferredInstall) return
-    try {
-      await deferredInstall.prompt()
-    } finally {
-      setDeferredInstall(null)
-    }
-  }
 
   const handleLinkPartner = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -214,21 +192,31 @@ export default function SettingsPage() {
             <span className="text-[#c7c7cc]">Chrome on iPhone cannot install web apps.</span>
           </p>
           <p className="mt-3 text-[13px] leading-snug text-[#8e8e93]">
-            <span className="text-[#c7c7cc]">Android (Chrome / Edge):</span> use the ⋮ menu →
-            Install app, or Add to Home screen. Chrome may only offer this after you’ve used the
-            site for a little while (try again in a minute). Not available in Incognito.
+            Android (Samsung): in Chrome, tap ⋮ (may be under “More”) → Install app or Add to Home
+            screen. Turn off Desktop site, avoid Incognito, and browse for a minute first — Chrome
+            often delays install. If nothing shows, try Samsung Internet: menu → Add page to →
+            Home screen.
           </p>
           {deferredInstall && (
             <button
               type="button"
-              onClick={() => void runDeferredInstall()}
+              onClick={() => void promptInstall()}
               className="mt-4 w-full rounded-[10px] bg-indigo-600 py-3 text-[17px] font-semibold text-white hover:bg-indigo-500"
             >
               Install OG Life
             </button>
           )}
-          {installOutcome && (
-            <p className="mt-3 text-[13px] text-green-300/90">{installOutcome}</p>
+          {installMessage && (
+            <p className="mt-3 text-[13px] text-green-300/90">
+              {installMessage}{' '}
+              <button
+                type="button"
+                onClick={clearInstallMessage}
+                className="text-[#0a84ff] underline"
+              >
+                Dismiss
+              </button>
+            </p>
           )}
         </section>
 

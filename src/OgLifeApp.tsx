@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarView } from './components/CalendarView'
 import { ShoppingListView } from './components/ShoppingListView'
+import { useInstallPrompt } from './contexts/InstallPromptContext'
 import { useAuth } from './lib/auth'
 import {
   fetchCalendarEventsForDashboard,
@@ -18,6 +19,8 @@ type Screen = 'home' | Tab
 
 export default function OgLifeApp() {
   const { user } = useAuth()
+  const { deferred, promptInstall, dismissDeferred, installMessage, clearInstallMessage } =
+    useInstallPrompt()
   const [screen, setScreen] = useState<Screen>('home')
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [dashboardEvents, setDashboardEvents] = useState<CalendarEvent[]>([])
@@ -173,6 +176,39 @@ export default function OgLifeApp() {
           {syncNote && (
             <p className="mt-2 rounded-lg border border-amber-700/40 bg-amber-900/20 px-3 py-2 text-xs text-amber-200">
               {syncNote}
+            </p>
+          )}
+          {deferred && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-indigo-500/40 bg-indigo-950/50 px-3 py-2.5">
+              <p className="min-w-0 flex-1 text-[13px] text-indigo-100/95">
+                Install OG Life on this phone for a full-screen shortcut.
+              </p>
+              <button
+                type="button"
+                onClick={() => void promptInstall()}
+                className="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white"
+              >
+                Install
+              </button>
+              <button
+                type="button"
+                onClick={dismissDeferred}
+                className="shrink-0 text-xs text-[#8e8e93] underline"
+              >
+                Not now
+              </button>
+            </div>
+          )}
+          {installMessage && (
+            <p className="mt-2 text-[13px] text-green-300/90">
+              {installMessage}{' '}
+              <button
+                type="button"
+                onClick={clearInstallMessage}
+                className="text-[#0a84ff] underline"
+              >
+                OK
+              </button>
             </p>
           )}
         </div>
