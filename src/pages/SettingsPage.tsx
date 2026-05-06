@@ -145,7 +145,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-slate-950 text-slate-100">
+    <div className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-slate-950 text-slate-100">
       <header
         className="shrink-0 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md"
         style={{
@@ -171,7 +171,7 @@ export default function SettingsPage() {
       </header>
 
       <main
-        className="mx-auto w-full max-w-lg flex-1 space-y-6 px-4 py-4"
+        className="mx-auto w-full max-w-lg min-h-0 flex-1 touch-pan-y space-y-6 overflow-y-auto px-4 py-4"
         style={{
           paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))',
         }}

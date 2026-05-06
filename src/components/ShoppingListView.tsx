@@ -115,7 +115,6 @@ export function ShoppingListView({ items, onChange }: Props) {
   const [quickName, setQuickName] = useState('')
   const [quickQuantity, setQuickQuantity] = useState('')
   const [page, setPage] = useState<'list' | 'add'>('list')
-  const [touchStartX, setTouchStartX] = useState<number | null>(null)
   const [showCompleted, setShowCompleted] = useState(false)
   const [editing, setEditing] = useState<ShoppingItem | null>(null)
   const [draftName, setDraftName] = useState('')
@@ -216,41 +215,35 @@ export function ShoppingListView({ items, onChange }: Props) {
     addItem(name, null)
   }
 
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    setTouchStartX(e.changedTouches[0].clientX)
-  }
-
-  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (touchStartX === null) return
-    const deltaX = e.changedTouches[0].clientX - touchStartX
-    if (deltaX <= -45) {
-      setPage('add')
-    } else if (deltaX >= 45) {
-      setPage('list')
-    }
-    setTouchStartX(null)
-  }
-
   return (
     <div className="ios-font space-y-4">
-      <div
-        className="space-y-4"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
-        <div className="flex items-center justify-center gap-1.5 pt-0.5">
-          <span className={`inline-flex items-center gap-1 text-[12px] ${page === 'list' ? 'text-white/90' : 'text-white/35'}`}>
+      <div className="space-y-2 pt-0.5">
+        <div className="flex items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPage('list')}
+            aria-label="Shopping list"
+            aria-pressed={page === 'list'}
+            className={`inline-flex min-h-11 min-w-11 items-center gap-1 rounded-full px-3 text-[12px] transition active:bg-white/10 ${page === 'list' ? 'text-white/90' : 'text-white/35'}`}
+          >
             <IconList className="h-4.5 w-4.5" />
             <span className="h-1.5 w-5 rounded-full bg-current" />
-          </span>
-          <span className={`inline-flex items-center gap-1 text-[12px] ${page === 'add' ? 'text-white/90' : 'text-white/35'}`}>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPage('add')}
+            aria-label="Add items"
+            aria-pressed={page === 'add'}
+            className={`inline-flex min-h-11 min-w-11 items-center gap-1 rounded-full px-3 text-[12px] transition active:bg-white/10 ${page === 'add' ? 'text-white/90' : 'text-white/35'}`}
+          >
             <IconPlusCircle className="h-4.5 w-4.5" />
             <span className="h-1.5 w-5 rounded-full bg-current" />
-          </span>
+          </button>
         </div>
         <p className="text-center text-[12px] text-[#8e8e93]">
-          Swipe to switch between list and add
+          Tap list or add above to switch
         </p>
+      </div>
 
         {page === 'add' ? (
           <>
@@ -464,7 +457,6 @@ export function ShoppingListView({ items, onChange }: Props) {
           </section>
           </>
         )}
-      </div>
 
       {/* Edit sheet */}
       {editing && (

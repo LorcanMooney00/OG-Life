@@ -138,7 +138,7 @@ export default function OgLifeApp() {
   const shoppingRemaining = shopping.filter((item) => !item.purchased).length
 
   return (
-    <div className="flex min-h-dvh flex-col bg-slate-950 text-slate-100">
+    <div className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-slate-950 text-slate-100">
       <header
         className="shrink-0 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md"
         style={{
@@ -215,7 +215,7 @@ export default function OgLifeApp() {
       </header>
 
       <main
-        className="mx-auto w-full max-w-lg flex-1 overflow-y-auto overscroll-y-contain px-4 py-4"
+        className="mx-auto w-full max-w-lg min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-4"
         style={{
           paddingBottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))',
           paddingLeft: 'max(1rem, env(safe-area-inset-left))',
