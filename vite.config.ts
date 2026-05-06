@@ -18,9 +18,28 @@ export default defineConfig({
         theme_color: '#020617',
         background_color: '#020617',
         display: 'standalone',
+        display_override: ['standalone', 'browser'],
         orientation: 'portrait-primary',
         scope: '/',
         start_url: '/',
+        lang: 'en',
+        dir: 'ltr',
+        prefer_related_applications: false,
+        categories: ['lifestyle', 'productivity'],
+        shortcuts: [
+          {
+            name: 'Home',
+            short_name: 'Home',
+            url: '/app',
+            icons: [
+              {
+                src: 'pwa-192.png',
+                sizes: '192x192',
+                type: 'image/png',
+              },
+            ],
+          },
+        ],
         icons: [
           {
             src: 'pwa-192.png',

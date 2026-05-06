@@ -12,6 +12,9 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [loadingPartners, setLoadingPartners] = useState(true)
+  const [deferredInstall, setDeferredInstall] =
+    useState<BeforeInstallPromptEvent | null>(null)
+  const [installOutcome, setInstallOutcome] = useState<string | null>(null)
 
   const loadPartners = useCallback(async () => {
     if (!supabase || !user) {
@@ -65,6 +68,32 @@ export default function SettingsPage() {
   useEffect(() => {
     void loadPartners()
   }, [loadPartners])
+
+  useEffect(() => {
+    const onBip = (e: BeforeInstallPromptEvent) => {
+      e.preventDefault()
+      setDeferredInstall(e)
+    }
+    const onInstalled = () => {
+      setDeferredInstall(null)
+      setInstallOutcome('App installed.')
+    }
+    window.addEventListener('beforeinstallprompt', onBip)
+    window.addEventListener('appinstalled', onInstalled)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBip)
+      window.removeEventListener('appinstalled', onInstalled)
+    }
+  }, [])
+
+  const runDeferredInstall = async () => {
+    if (!deferredInstall) return
+    try {
+      await deferredInstall.prompt()
+    } finally {
+      setDeferredInstall(null)
+    }
+  }
 
   const handleLinkPartner = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -179,9 +208,28 @@ export default function SettingsPage() {
         <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
           <p className="text-[15px] font-semibold text-white">Install on your device</p>
           <p className="mt-1 text-[13px] leading-snug text-[#8e8e93]">
-            This site can be installed like an app. iPhone: Safari → Share → Add to Home Screen.
-            Android / Chrome / Edge: menu → Install app (wording may vary).
+            <span className="text-[#c7c7cc]">iPhone:</span> Apple only allows “install” from{' '}
+            <span className="text-[#c7c7cc]">Safari</span> — open this site in Safari, tap Share →
+            Add to Home Screen.{' '}
+            <span className="text-[#c7c7cc]">Chrome on iPhone cannot install web apps.</span>
           </p>
+          <p className="mt-3 text-[13px] leading-snug text-[#8e8e93]">
+            <span className="text-[#c7c7cc]">Android (Chrome / Edge):</span> use the ⋮ menu →
+            Install app, or Add to Home screen. Chrome may only offer this after you’ve used the
+            site for a little while (try again in a minute). Not available in Incognito.
+          </p>
+          {deferredInstall && (
+            <button
+              type="button"
+              onClick={() => void runDeferredInstall()}
+              className="mt-4 w-full rounded-[10px] bg-indigo-600 py-3 text-[17px] font-semibold text-white hover:bg-indigo-500"
+            >
+              Install OG Life
+            </button>
+          )}
+          {installOutcome && (
+            <p className="mt-3 text-[13px] text-green-300/90">{installOutcome}</p>
+          )}
         </section>
 
         <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
