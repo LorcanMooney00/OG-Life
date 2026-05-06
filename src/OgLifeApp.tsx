@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarView } from './components/CalendarView'
+import { useDominantHorizontalSwipe } from './hooks/useDominantHorizontalSwipe'
 import { ShoppingListView } from './components/ShoppingListView'
 import { useInstallPrompt } from './contexts/InstallPromptContext'
 import { useAuth } from './lib/auth'
@@ -137,6 +138,30 @@ export default function OgLifeApp() {
   ).length
   const shoppingRemaining = shopping.filter((item) => !item.purchased).length
 
+  const onTabSwipeLeft = useCallback(() => {
+    setScreen((s) => {
+      // Calendar: month swipe lives on CalendarView. Shopping: list/add swipe on ShoppingListView.
+      if (s === 'calendar' || s === 'shopping') return s
+      const order: Screen[] = ['home', 'calendar', 'shopping']
+      const i = order.indexOf(s)
+      return order[(i + 1) % 3]
+    })
+  }, [])
+
+  const onTabSwipeRight = useCallback(() => {
+    setScreen((s) => {
+      if (s === 'calendar' || s === 'shopping') return s
+      const order: Screen[] = ['home', 'calendar', 'shopping']
+      const i = order.indexOf(s)
+      return order[(i + 2) % 3]
+    })
+  }, [])
+
+  const tabSwipe = useDominantHorizontalSwipe({
+    onSwipeLeft: onTabSwipeLeft,
+    onSwipeRight: onTabSwipeRight,
+  })
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-slate-950 text-slate-100">
       <header
@@ -215,6 +240,7 @@ export default function OgLifeApp() {
       </header>
 
       <main
+        {...tabSwipe}
         className="mx-auto w-full min-w-0 max-w-lg min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-4 [-webkit-overflow-scrolling:touch]"
         style={{
           paddingBottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))',

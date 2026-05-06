@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useDominantHorizontalSwipe } from '../hooks/useDominantHorizontalSwipe'
 import type { CalendarEvent } from '../types'
 import { createId } from '../lib/id'
 import { compareEventTime, toYmd } from '../lib/date'
@@ -301,8 +302,23 @@ export function CalendarView({ events, onChange, onVisibleMonthChange }: Props) 
   const iosBlue = 'text-[#0a84ff]'
   const iosSecondary = 'text-[#8e8e93]'
 
+  const onMonthSwipeLeft = useCallback(() => {
+    if (draft || confirmDeleteId) return
+    setCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))
+  }, [draft, confirmDeleteId])
+
+  const onMonthSwipeRight = useCallback(() => {
+    if (draft || confirmDeleteId) return
+    setCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))
+  }, [draft, confirmDeleteId])
+
+  const monthSwipe = useDominantHorizontalSwipe({
+    onSwipeLeft: onMonthSwipeLeft,
+    onSwipeRight: onMonthSwipeRight,
+  })
+
   return (
-    <div className="ios-font space-y-4 sm:space-y-5">
+    <div className="ios-font space-y-4 sm:space-y-5" {...monthSwipe}>
       {/* Navigation bar — like iOS month picker */}
       <div className="flex items-center justify-between gap-2 px-0.5">
         <button

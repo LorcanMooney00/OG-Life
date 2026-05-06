@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useDominantHorizontalSwipe } from '../hooks/useDominantHorizontalSwipe'
 import type { ShoppingItem } from '../types'
 import { createId } from '../lib/id'
 
@@ -215,8 +216,23 @@ export function ShoppingListView({ items, onChange }: Props) {
     addItem(name, null)
   }
 
+  const onListSwipeLeft = useCallback(() => {
+    if (editing) return
+    setPage((p) => (p === 'list' ? 'add' : p))
+  }, [editing])
+
+  const onListSwipeRight = useCallback(() => {
+    if (editing) return
+    setPage((p) => (p === 'add' ? 'list' : p))
+  }, [editing])
+
+  const listSwipe = useDominantHorizontalSwipe({
+    onSwipeLeft: onListSwipeLeft,
+    onSwipeRight: onListSwipeRight,
+  })
+
   return (
-    <div className="ios-font space-y-4">
+    <div className="ios-font space-y-4" {...listSwipe}>
       <div className="space-y-2 pt-0.5">
         <div className="flex items-center justify-center gap-2">
           <button
@@ -241,7 +257,7 @@ export function ShoppingListView({ items, onChange }: Props) {
           </button>
         </div>
         <p className="text-center text-[12px] text-[#8e8e93]">
-          Tap list or add above to switch
+          Tap above, or swipe left/right to switch list and add
         </p>
       </div>
 
