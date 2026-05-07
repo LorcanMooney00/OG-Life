@@ -1,0 +1,9 @@
+# Local / CLI defaults. Run `supabase link` to set project_id.
+#
+# Partner push alerts: deploy `send-push-notification` and run `push_partner_alerts.sql`
+# (see comments in that file for secrets and config rows).
+
+# Must be false: pg_net calls this with x-og-push-secret only (no JWT). If this is ON in the
+# Dashboard (“Verify JWT with legacy secret”), every trigger call gets 401 before index.ts runs.
+[functions.send-push-notification]
+verify_jwt = false

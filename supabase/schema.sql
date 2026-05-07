@@ -98,6 +98,10 @@ create index if not exists calendar_events_by_owner_date_idx
 create index if not exists calendar_events_event_date_idx
   on public.calendar_events (event_date);
 
+-- One-shot 30-minute reminder (pg_cron job in calendar_event_reminders.sql); not used for recurring series yet.
+alter table public.calendar_events
+  add column if not exists reminder_sent_at timestamptz;
+
 -- ---------------------------------------------------------------------------
 -- Shopping
 -- ---------------------------------------------------------------------------
@@ -144,6 +148,7 @@ create trigger shopping_items_prevent_owner_change
 
 -- ---------------------------------------------------------------------------
 -- Push subscriptions (OneSignal web subscription id per device; column name is legacy “player”)
+-- Partner alerts: deploy Edge Function + run push_partner_alerts.sql (pg_net → OneSignal).
 -- ---------------------------------------------------------------------------
 create table if not exists public.push_subscriptions (
   id uuid primary key default gen_random_uuid(),

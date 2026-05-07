@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarView } from './components/CalendarView'
 import { useDominantHorizontalSwipe } from './hooks/useDominantHorizontalSwipe'
 import { ShoppingListView } from './components/ShoppingListView'
@@ -20,6 +20,7 @@ type Screen = 'home' | Tab
 
 export default function OgLifeApp() {
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { deferred, promptInstall, dismissDeferred, installMessage, clearInstallMessage } =
     useInstallPrompt()
   const [screen, setScreen] = useState<Screen>('home')
@@ -31,6 +32,16 @@ export default function OgLifeApp() {
     return { y: n.getFullYear(), m: n.getMonth() }
   })
   const [syncNote, setSyncNote] = useState<string | null>(null)
+
+  useLayoutEffect(() => {
+    const tab = searchParams.get('screen')
+    if (tab === 'shopping' || tab === 'calendar' || tab === 'home') {
+      setScreen(tab)
+      const next = new URLSearchParams(searchParams)
+      next.delete('screen')
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   const userId = user?.id
 
