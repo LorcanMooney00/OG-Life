@@ -110,12 +110,17 @@ body {
 }
 
 /* Each card has a *resting* transform composed from CSS custom properties so
-   call sites can per-card tilt/scale a stacked-deck look. The keyframe’s 100%
-   step reads the same vars, with `animation-fill-mode: both` so the rest pose
-   sticks once the rise-in finishes. */
+   the scroll handler can per-card scale + lift the off-centre cards for a
+   deck-of-cards stack (no rotation — that would fan like an umbrella). The
+   keyframe’s 100% step reads the same vars, with `animation-fill-mode: both`
+   so the rest pose sticks once the rise-in finishes. */
 .tab-switcher-card {
-  --rest-rotate: 0deg;
   --rest-scale: 1;
+  --rest-translate-y: 0px;
+  /* Static fallback so the scroll-driven scale/lift still applies even when
+     the rise-in animation is suppressed (reduced motion). The keyframe’s 100%
+     step uses the same vars, so there’s no jump when the animation finishes. */
+  transform: translate3d(0, var(--rest-translate-y), 0) scale(var(--rest-scale));
   animation: tab-switcher-card-rise 280ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
   transform-origin: 50% 50%;
   will-change: transform, opacity;
@@ -137,7 +142,7 @@ body {
     opacity: 0;
   }
   100% {
-    transform: rotate(var(--rest-rotate)) scale(var(--rest-scale));
+    transform: translate3d(0, var(--rest-translate-y), 0) scale(var(--rest-scale));
     opacity: 1;
   }
 }

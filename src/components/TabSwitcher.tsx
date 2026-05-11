@@ -59,7 +59,9 @@ export function TabSwitcher({
   onClose,
 }: Props) {
   const scrollerRef = useRef<HTMLDivElement>(null)
-  const cardRefs = useRef<Record<SwitcherScreen, HTMLButtonElement | null>>({
+  // We point at the *wrapper* div for each card (not the button) because the
+  // tilt/scale CSS vars live on `.tab-switcher-card`, which is the wrapper.
+  const cardRefs = useRef<Record<SwitcherScreen, HTMLDivElement | null>>({
     calendar: null,
     home: null,
     shopping: null,
@@ -103,6 +105,59 @@ export function TabSwitcher({
       })
     }
   }, [open, current])
+
+  // Live scale/depth: each card’s `--rest-scale` and `--rest-translate-y`
+  // vars are recomputed from its distance to the scroller’s centre on every
+  // scroll frame. No rotation — we want a deck-of-cards stack, not an
+  // umbrella fan, so the off-centre cards stay parallel and just sit a touch
+  // smaller and slightly lifted to imply depth.
+  useEffect(() => {
+    if (!open) return
+    const scroller = scrollerRef.current
+    if (!scroller) return
+
+    let raf = 0
+    const MAX_SCALE_DROP = 0.08 // 0.92 at extremes — card behind feels recessed
+    const MAX_LIFT_PX = 10 // back cards rise a hair to peek over the front one
+
+    const update = () => {
+      const scrollerRect = scroller.getBoundingClientRect()
+      const scrollerCenter = scrollerRect.left + scrollerRect.width / 2
+      for (const id of order) {
+        const node = cardRefs.current[id]
+        if (!node) continue
+        const rect = node.getBoundingClientRect()
+        const cardCenter = rect.left + rect.width / 2
+        // Normalise by the wrapper’s un-transformed layout width so the math
+        // stays stable as we scale the card (otherwise we’d feedback-loop).
+        const baseWidth = node.offsetWidth || rect.width || 1
+        const tRaw = (cardCenter - scrollerCenter) / baseWidth
+        const tClamped = Math.max(-1, Math.min(1, tRaw))
+        const absT = Math.abs(tClamped)
+        const scale = 1 - absT * MAX_SCALE_DROP
+        const liftY = -absT * MAX_LIFT_PX
+        node.style.setProperty('--rest-scale', scale.toFixed(3))
+        node.style.setProperty('--rest-translate-y', `${liftY.toFixed(1)}px`)
+      }
+    }
+
+    const onScroll = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(update)
+    }
+
+    // First pass: wait two frames so the scroll-into-view above has executed
+    // and the rise-in animation has had a chance to grab its starting vars.
+    raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(update)
+    })
+
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      scroller.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(raf)
+    }
+  }, [open, order])
 
   if (!open) return null
 
@@ -155,37 +210,39 @@ export function TabSwitcher({
         >
           {order.map((id, i) => {
             const isCurrent = id === current
-            // Stacked-deck pose: cards lean toward the currently-open tab and
-            // overlap each other by ~10% of their width. The 100% keyframe of
-            // `.tab-switcher-card` reads these vars, so the rise-in animation
-            // settles directly into the rest pose without a second transition.
+            // Initial pose seeds — only used for the very first paint (before
+            // the scroll handler has had a chance to compute live values).
+            // The scroll effect above overwrites `--rest-scale` /
+            // `--rest-translate-y` on rAF based on each card’s real distance
+            // to the carousel centre, so the deck-of-cards stack tracks the
+            // scroll smoothly.
             const offset = i - order.indexOf(current)
-            const tilt = offset === 0 ? 0 : offset < 0 ? 4 : -4
-            const scale = offset === 0 ? 1 : 0.94
-            // Cast lets us pass through custom CSS properties (`--rest-rotate`,
-            // `--rest-scale`) without fighting TypeScript over the index sig.
+            const seedScale = offset === 0 ? 1 : 0.94
+            const seedLiftY = offset === 0 ? 0 : -6
+            // Cast lets us pass through custom CSS properties (`--rest-scale`,
+            // `--rest-translate-y`) without fighting TypeScript over the index sig.
             const cardStyle = {
               animationDelay: `${i * 50}ms`,
               scrollSnapAlign: 'center',
               marginLeft: i === 0 ? '0px' : '-28px',
               zIndex: isCurrent ? 30 : 20 - Math.abs(offset),
-              '--rest-rotate': `${tilt}deg`,
-              '--rest-scale': String(scale),
+              '--rest-scale': String(seedScale),
+              '--rest-translate-y': `${seedLiftY}px`,
             } as React.CSSProperties
 
             return (
               <div
                 key={id}
+                ref={(el) => {
+                  cardRefs.current[id] = el
+                }}
                 className="tab-switcher-card flex-shrink-0"
                 style={cardStyle}
               >
                 <button
-                  ref={(el) => {
-                    cardRefs.current[id] = el
-                  }}
                   type="button"
                   onClick={() => handlePick(id)}
-                  // active:brightness-95 replaces the previous active:scale —
+                  // active:brightness-90 replaces the previous active:scale —
                   // an extra transform on the button would compete with the
                   // wrapper’s tilt/scale and snap the card out of position.
                   className={`relative flex h-[min(72vh,560px)] w-[min(78vw,300px)] flex-col overflow-hidden rounded-[24px] text-left ring-1 transition-[filter] duration-150 active:brightness-90 ${
