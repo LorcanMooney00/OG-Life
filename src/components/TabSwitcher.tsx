@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { haptic } from '../lib/haptics'
 import {
   formatClockTime,
@@ -70,6 +70,20 @@ export function TabSwitcher({
   // Order matches the bottom nav: Calendar | Home | Shopping.
   const order: SwitcherScreen[] = useMemo(() => ['calendar', 'home', 'shopping'], [])
 
+  // The card closest to the carousel’s centre. Drives the highlight ring +
+  // shadow so the user gets a live "this is what I’m about to pick" signal as
+  // they scroll. Defaults to whatever tab is actually open.
+  const [focusedScreen, setFocusedScreen] = useState<SwitcherScreen>(current)
+  // Mirror in a ref so the rAF scroll handler can compare against the latest
+  // value without re-binding on every state change.
+  const focusedRef = useRef<SwitcherScreen>(current)
+  useEffect(() => {
+    if (open) {
+      setFocusedScreen(current)
+      focusedRef.current = current
+    }
+  }, [open, current])
+
   // Keyboard escape — small accessibility win on desktop and connected keyboards.
   useEffect(() => {
     if (!open) return
@@ -123,6 +137,8 @@ export function TabSwitcher({
     const update = () => {
       const scrollerRect = scroller.getBoundingClientRect()
       const scrollerCenter = scrollerRect.left + scrollerRect.width / 2
+      let nearestId: SwitcherScreen | null = null
+      let nearestDist = Infinity
       for (const id of order) {
         const node = cardRefs.current[id]
         if (!node) continue
@@ -131,13 +147,27 @@ export function TabSwitcher({
         // Normalise by the wrapper’s un-transformed layout width so the math
         // stays stable as we scale the card (otherwise we’d feedback-loop).
         const baseWidth = node.offsetWidth || rect.width || 1
-        const tRaw = (cardCenter - scrollerCenter) / baseWidth
+        const dx = cardCenter - scrollerCenter
+        const tRaw = dx / baseWidth
         const tClamped = Math.max(-1, Math.min(1, tRaw))
         const absT = Math.abs(tClamped)
         const scale = 1 - absT * MAX_SCALE_DROP
         const liftY = -absT * MAX_LIFT_PX
         node.style.setProperty('--rest-scale', scale.toFixed(3))
         node.style.setProperty('--rest-translate-y', `${liftY.toFixed(1)}px`)
+        const absDist = Math.abs(dx)
+        if (absDist < nearestDist) {
+          nearestDist = absDist
+          nearestId = id
+        }
+      }
+      // Promote the closest-to-centre card to "focused" so the ring/glow
+      // follow the scroll. Only fire setState on transitions to keep this
+      // out of React’s render loop on every frame.
+      if (nearestId && nearestId !== focusedRef.current) {
+        focusedRef.current = nearestId
+        setFocusedScreen(nearestId)
+        haptic('light')
       }
     }
 
@@ -210,13 +240,16 @@ export function TabSwitcher({
         >
           {order.map((id, i) => {
             const isCurrent = id === current
+            const isFocused = id === focusedScreen
             // Initial pose seeds — only used for the very first paint (before
             // the scroll handler has had a chance to compute live values).
             // The scroll effect above overwrites `--rest-scale` /
             // `--rest-translate-y` on rAF based on each card’s real distance
             // to the carousel centre, so the deck-of-cards stack tracks the
-            // scroll smoothly.
-            const offset = i - order.indexOf(current)
+            // scroll smoothly. Anchor the seed pose to the *focused* card
+            // (= currently centred), not the actually-open one, so the live
+            // pose lines up with the highlight from the very first paint.
+            const offset = i - order.indexOf(focusedScreen)
             const seedScale = offset === 0 ? 1 : 0.94
             const seedLiftY = offset === 0 ? 0 : -6
             // Cast lets us pass through custom CSS properties (`--rest-scale`,
@@ -225,7 +258,9 @@ export function TabSwitcher({
               animationDelay: `${i * 50}ms`,
               scrollSnapAlign: 'center',
               marginLeft: i === 0 ? '0px' : '-28px',
-              zIndex: isCurrent ? 30 : 20 - Math.abs(offset),
+              // Focused card sits on top; neighbours stack behind it by
+              // distance, so the centred one never gets clipped by overlap.
+              zIndex: isFocused ? 30 : 20 - Math.abs(offset),
               '--rest-scale': String(seedScale),
               '--rest-translate-y': `${seedLiftY}px`,
             } as React.CSSProperties
@@ -244,9 +279,11 @@ export function TabSwitcher({
                   onClick={() => handlePick(id)}
                   // active:brightness-90 replaces the previous active:scale —
                   // an extra transform on the button would compete with the
-                  // wrapper’s tilt/scale and snap the card out of position.
-                  className={`relative flex h-[min(72vh,560px)] w-[min(78vw,300px)] flex-col overflow-hidden rounded-[24px] text-left ring-1 transition-[filter] duration-150 active:brightness-90 ${
-                    isCurrent
+                  // wrapper’s scale/lift and snap the card out of position.
+                  // Ring + shadow swap is on a CSS transition so the highlight
+                  // glides on/off as the user scrolls past each card.
+                  className={`relative flex h-[min(72vh,560px)] w-[min(78vw,300px)] flex-col overflow-hidden rounded-[24px] text-left ring-1 transition-[box-shadow,filter] duration-200 active:brightness-90 ${
+                    isFocused
                       ? 'shadow-[0_24px_60px_rgba(79,70,229,0.35)] ring-indigo-300/50'
                       : 'shadow-[0_18px_40px_rgba(0,0,0,0.45)] ring-white/[0.1]'
                   }`}
