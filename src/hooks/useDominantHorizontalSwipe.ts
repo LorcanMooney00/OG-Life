@@ -171,21 +171,32 @@ type SwipeGestureOptions = {
   onNext?: () => void
   onPrev?: () => void
   enabled?: boolean
-  /** Horizontal distance before the pop engages (px) */
+  /** Horizontal distance before the pop engages when not in long-press mode (px) */
   engagementDistance?: number
   /** Drag distance during scrub before release commits a tab change (px) */
   commitDistance?: number
   /** Horizontal dominance required vs vertical motion (1.0 = equal) */
   axisRatio?: number
+  /**
+   * If > 0, the user must hold still for this many ms before scrub engages.
+   * Use on screens that already have inner horizontal gestures (calendar month nav,
+   * shopping list/add swipe) so quick swipes still belong to those views and only a
+   * deliberate hold takes over for tab switching.
+   */
+  longPressMs?: number
+  /** Pre-engage movement allowed before we cancel the long-press timer (px) */
+  longPressSlop?: number
 }
 
 /**
- * Swipe-with-pop tab gesture (One UI recent-apps feel, no long press required):
- *  - Plain taps and vertical scrolls are untouched (we only engage once horizontal
- *    motion is clearly dominant past `engagementDistance`).
- *  - Once engaged, the inner element “pops” (scale + shadow via .is-scrubbing) and
- *    follows the finger; release past `commitDistance` fires onNext / onPrev.
- *  - Smaller drags snap back to flat.
+ * Tab swipe with optional “press a moment, then drag” engagement.
+ *  - longPressMs === 0: horizontal drag past `engagementDistance` engages immediately
+ *    (good on the Home screen where there’s no competing gesture).
+ *  - longPressMs > 0: a still hold for that long engages; any motion before then
+ *    cancels the hold so inner gestures (e.g. CalendarView month-swipe) work as usual.
+ *
+ * Touchmove/end are captured at the capture phase so once we engage we can
+ * stopPropagation and prevent inner swipe hooks from also firing on the same release.
  */
 export function useTabSwipeGesture({
   onNext,
@@ -194,13 +205,33 @@ export function useTabSwipeGesture({
   engagementDistance = 18,
   commitDistance = 56,
   axisRatio = 1.35,
+  longPressMs = 0,
+  longPressSlop = 10,
 }: SwipeGestureOptions) {
   const rootRef = useRef<HTMLElement | null>(null)
   const innerRef = useRef<HTMLElement | null>(null)
   const [scrubbing, setScrubbing] = useState(false)
 
-  const optsRef = useRef({ onNext, onPrev, enabled, engagementDistance, commitDistance, axisRatio })
-  optsRef.current = { onNext, onPrev, enabled, engagementDistance, commitDistance, axisRatio }
+  const optsRef = useRef({
+    onNext,
+    onPrev,
+    enabled,
+    engagementDistance,
+    commitDistance,
+    axisRatio,
+    longPressMs,
+    longPressSlop,
+  })
+  optsRef.current = {
+    onNext,
+    onPrev,
+    enabled,
+    engagementDistance,
+    commitDistance,
+    axisRatio,
+    longPressMs,
+    longPressSlop,
+  }
 
   useEffect(() => {
     const root = rootRef.current
@@ -209,11 +240,11 @@ export function useTabSwipeGesture({
     let start: { x: number; y: number } | null = null
     let engaged = false
     let currentDx = 0
+    let holdTimer: number | null = null
 
     const applyScrubTransform = (dx: number) => {
       const inner = innerRef.current
       if (!inner) return
-      // Clamp so a huge fling doesn’t slide the card off forever.
       const drift = Math.max(Math.min(dx, 220), -220)
       const rot = drift / 80
       inner.style.transform = `translate3d(${drift}px, 0, 0) rotate(${rot}deg) scale(0.94)`
@@ -231,6 +262,13 @@ export function useTabSwipeGesture({
       inner.addEventListener('transitionend', cleanup)
     }
 
+    const cancelHoldTimer = () => {
+      if (holdTimer != null) {
+        clearTimeout(holdTimer)
+        holdTimer = null
+      }
+    }
+
     const engage = (dx: number) => {
       engaged = true
       setScrubbing(true)
@@ -243,10 +281,18 @@ export function useTabSwipeGesture({
     }
 
     const onTouchStart = (e: TouchEvent) => {
-      if (!optsRef.current.enabled || e.touches.length !== 1) return
+      const { enabled: on, longPressMs: dur } = optsRef.current
+      if (!on || e.touches.length !== 1) return
       start = { x: e.touches[0].clientX, y: e.touches[0].clientY }
       engaged = false
       currentDx = 0
+      cancelHoldTimer()
+      if (dur > 0) {
+        holdTimer = window.setTimeout(() => {
+          engage(0)
+          holdTimer = null
+        }, dur)
+      }
     }
 
     const onTouchMove = (e: TouchEvent) => {
@@ -254,25 +300,44 @@ export function useTabSwipeGesture({
       const t = e.touches[0]
       const dx = t.clientX - start.x
       const dy = t.clientY - start.y
-      const { engagementDistance: slop, axisRatio: ratio } = optsRef.current
+      const {
+        engagementDistance: slop,
+        axisRatio: ratio,
+        longPressMs: dur,
+        longPressSlop: holdSlop,
+      } = optsRef.current
 
       if (engaged) {
         e.preventDefault()
+        e.stopPropagation()
         currentDx = dx
         applyScrubTransform(dx)
         return
       }
 
+      // Hold-mode: any motion past a small slop cancels the long-press so inner
+      // swipe gestures (month nav, list/add) keep working normally.
+      if (dur > 0) {
+        if (Math.abs(dx) > holdSlop || Math.abs(dy) > holdSlop) {
+          cancelHoldTimer()
+          start = null
+        }
+        return
+      }
+
+      // Immediate-mode: engage once the gesture is clearly horizontal.
       if (Math.abs(dx) >= slop && Math.abs(dx) >= Math.abs(dy) * ratio) {
         engage(dx)
         e.preventDefault()
+        e.stopPropagation()
         currentDx = dx
       }
     }
 
-    const onTouchEnd = () => {
-      if (!start) return
+    const onTouchEnd = (e: TouchEvent) => {
+      cancelHoldTimer()
       if (engaged) {
+        e.stopPropagation()
         const { onNext: next, onPrev: prev, commitDistance: commit } = optsRef.current
         let direction: 'next' | 'prev' | null = null
         if (currentDx <= -commit) direction = 'next'
@@ -289,6 +354,7 @@ export function useTabSwipeGesture({
     }
 
     const onTouchCancel = () => {
+      cancelHoldTimer()
       if (engaged) {
         engaged = false
         setScrubbing(false)
@@ -298,16 +364,17 @@ export function useTabSwipeGesture({
       currentDx = 0
     }
 
-    root.addEventListener('touchstart', onTouchStart, { passive: true })
-    root.addEventListener('touchmove', onTouchMove, { passive: false })
-    root.addEventListener('touchend', onTouchEnd, { passive: true })
-    root.addEventListener('touchcancel', onTouchCancel, { passive: true })
+    root.addEventListener('touchstart', onTouchStart, { passive: true, capture: true })
+    root.addEventListener('touchmove', onTouchMove, { passive: false, capture: true })
+    root.addEventListener('touchend', onTouchEnd, { passive: true, capture: true })
+    root.addEventListener('touchcancel', onTouchCancel, { passive: true, capture: true })
 
     return () => {
-      root.removeEventListener('touchstart', onTouchStart)
-      root.removeEventListener('touchmove', onTouchMove)
-      root.removeEventListener('touchend', onTouchEnd)
-      root.removeEventListener('touchcancel', onTouchCancel)
+      root.removeEventListener('touchstart', onTouchStart, { capture: true } as EventListenerOptions)
+      root.removeEventListener('touchmove', onTouchMove, { capture: true } as EventListenerOptions)
+      root.removeEventListener('touchend', onTouchEnd, { capture: true } as EventListenerOptions)
+      root.removeEventListener('touchcancel', onTouchCancel, { capture: true } as EventListenerOptions)
+      cancelHoldTimer()
     }
   }, [])
 

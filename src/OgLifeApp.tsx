@@ -18,7 +18,8 @@ import type { CalendarEvent, ShoppingItem } from './types'
 type Tab = 'calendar' | 'shopping'
 type Screen = 'home' | Tab
 
-const SCREEN_ORDER: Screen[] = ['home', 'calendar', 'shopping']
+// Visual order left → right: Calendar | Home | Shopping. Drives swipe direction.
+const SCREEN_ORDER: Screen[] = ['calendar', 'home', 'shopping']
 
 export default function OgLifeApp() {
   const { user } = useAuth()
@@ -151,28 +152,30 @@ export default function OgLifeApp() {
   ).length
   const shoppingRemaining = shopping.filter((item) => !item.purchased).length
 
-  // Tab navigation is only available on the Home screen. On Calendar/Shopping
-  // the inner views own horizontal gestures (month nav / list-vs-add).
+  // Tab navigation: swipe-left = next (right tab), swipe-right = prev (left tab).
+  // Clamps at the edges of SCREEN_ORDER (no wrap).
   const onTabNext = useCallback(() => {
     setScreen((s) => {
-      if (s === 'calendar' || s === 'shopping') return s
       const i = SCREEN_ORDER.indexOf(s)
-      return SCREEN_ORDER[(i + 1) % SCREEN_ORDER.length]
+      return SCREEN_ORDER[Math.min(i + 1, SCREEN_ORDER.length - 1)]
     })
   }, [])
 
   const onTabPrev = useCallback(() => {
     setScreen((s) => {
-      if (s === 'calendar' || s === 'shopping') return s
       const i = SCREEN_ORDER.indexOf(s)
-      return SCREEN_ORDER[(i + SCREEN_ORDER.length - 1) % SCREEN_ORDER.length]
+      return SCREEN_ORDER[Math.max(i - 1, 0)]
     })
   }, [])
 
+  // Home: drag horizontally to engage immediately (no competing gesture there).
+  // Calendar / Shopping: must hold ~0.6s before scrub takes over, so quick swipes
+  // still belong to the inner views (month-swipe / list-add toggle).
   const { rootRef: mainRef, innerRef: scrubInnerRef, scrubbing } = useTabSwipeGesture({
     onNext: onTabNext,
     onPrev: onTabPrev,
-    enabled: screen === 'home',
+    enabled: true,
+    longPressMs: screen === 'home' ? 0 : 600,
   })
 
   // Tilt-stack: figure out direction of the incoming tab so CSS can pick left/right anim.
@@ -340,18 +343,6 @@ export default function OgLifeApp() {
         <div className="mx-auto flex max-w-lg">
           <button
             type="button"
-            onClick={() => setScreen('home')}
-            className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium transition active:bg-slate-900/80 ${
-              screen === 'home' ? 'text-indigo-300' : 'text-slate-500'
-            }`}
-          >
-            <span className="text-lg leading-none" aria-hidden>
-              🏠
-            </span>
-            Home
-          </button>
-          <button
-            type="button"
             onClick={() => setScreen('calendar')}
             className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium transition active:bg-slate-900/80 ${
               screen === 'calendar' ? 'text-indigo-300' : 'text-slate-500'
@@ -361,6 +352,18 @@ export default function OgLifeApp() {
               📅
             </span>
             Calendar
+          </button>
+          <button
+            type="button"
+            onClick={() => setScreen('home')}
+            className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium transition active:bg-slate-900/80 ${
+              screen === 'home' ? 'text-indigo-300' : 'text-slate-500'
+            }`}
+          >
+            <span className="text-lg leading-none" aria-hidden>
+              🏠
+            </span>
+            Home
           </button>
           <button
             type="button"
