@@ -171,43 +171,61 @@ export function useLockingHorizontalSwipeRef({
 type SwipeGestureOptions = {
   onNext?: () => void
   onPrev?: () => void
+  /**
+   * Fires when the user holds still for `longPressMs`. If provided, the hold
+   * does NOT engage scrub — call sites can show their own switcher UI instead.
+   * Leave undefined to fall back to legacy hold-then-scrub behaviour.
+   */
+  onLongPress?: () => void
   enabled?: boolean
-  /** Horizontal distance before the pop engages when not in long-press mode (px) */
+  /** Horizontal distance before scrub engages on an immediate drag (px). */
   engagementDistance?: number
-  /** Drag distance during scrub before release commits a tab change (px) */
+  /** Drag distance during scrub before release commits a tab change (px). */
   commitDistance?: number
-  /** Horizontal dominance required vs vertical motion (1.0 = equal) */
+  /** Horizontal dominance required vs vertical motion (1.0 = equal). */
   axisRatio?: number
   /**
-   * If > 0, the user must hold still for this many ms before scrub engages.
-   * Use on screens that already have inner horizontal gestures (calendar month nav,
-   * shopping list/add swipe) so quick swipes still belong to those views and only a
-   * deliberate hold takes over for tab switching.
+   * If > 0, arm a hold timer of this duration; on expiry, fire `onLongPress`
+   * (or engage scrub if no `onLongPress` is supplied — legacy behaviour).
+   * Any motion before the timer fires cancels it, so inner gestures still work.
    */
   longPressMs?: number
-  /** Pre-engage movement allowed before we cancel the long-press timer (px) */
+  /** Pre-engage movement allowed before we cancel the long-press timer (px). */
   longPressSlop?: number
+  /**
+   * If true, a clearly horizontal drag past `engagementDistance` engages scrub
+   * immediately (separate from the long-press path). Use on screens with no
+   * inner horizontal gesture (e.g. Home) so quick swipes still switch tabs.
+   */
+  immediateDrag?: boolean
 }
 
 /**
- * Tab swipe with optional “press a moment, then drag” engagement.
- *  - longPressMs === 0: horizontal drag past `engagementDistance` engages immediately
- *    (good on the Home screen where there’s no competing gesture).
- *  - longPressMs > 0: a still hold for that long engages; any motion before then
- *    cancels the hold so inner gestures (e.g. CalendarView month-swipe) work as usual.
+ * Tab swipe with two independent engagement paths:
+ *  - LONG-PRESS path: when `longPressMs > 0`, a still hold fires `onLongPress`
+ *    (modern UX — usually opens a tab switcher) or, if no callback is given,
+ *    engages the scrub-to-switch animation (legacy fallback).
+ *  - DRAG path: when `immediateDrag === true`, a horizontal drag past the
+ *    engagement threshold puts the screen into scrub-to-switch mode regardless
+ *    of any hold timer.
  *
- * Touchmove/end are captured at the capture phase so once we engage we can
- * stopPropagation and prevent inner swipe hooks from also firing on the same release.
+ * Set just one path (Cal/Shop: long-press only) or both (Home: long-press to
+ * open switcher AND horizontal drag for quick adjacent-tab swipe).
+ *
+ * Touchmove/end run at the capture phase so once we engage scrub we can
+ * stopPropagation and prevent inner swipe hooks from firing on the same release.
  */
 export function useTabSwipeGesture({
   onNext,
   onPrev,
+  onLongPress,
   enabled = true,
   engagementDistance = 18,
   commitDistance = 56,
   axisRatio = 1.35,
   longPressMs = 0,
   longPressSlop = 10,
+  immediateDrag = false,
 }: SwipeGestureOptions) {
   const rootRef = useRef<HTMLElement | null>(null)
   const innerRef = useRef<HTMLElement | null>(null)
@@ -216,22 +234,26 @@ export function useTabSwipeGesture({
   const optsRef = useRef({
     onNext,
     onPrev,
+    onLongPress,
     enabled,
     engagementDistance,
     commitDistance,
     axisRatio,
     longPressMs,
     longPressSlop,
+    immediateDrag,
   })
   optsRef.current = {
     onNext,
     onPrev,
+    onLongPress,
     enabled,
     engagementDistance,
     commitDistance,
     axisRatio,
     longPressMs,
     longPressSlop,
+    immediateDrag,
   }
 
   useEffect(() => {
@@ -278,7 +300,7 @@ export function useTabSwipeGesture({
     }
 
     const onTouchStart = (e: TouchEvent) => {
-      const { enabled: on, longPressMs: dur } = optsRef.current
+      const { enabled: on, longPressMs: dur, onLongPress: lp } = optsRef.current
       if (!on || e.touches.length !== 1) return
       start = { x: e.touches[0].clientX, y: e.touches[0].clientY }
       engaged = false
@@ -286,8 +308,17 @@ export function useTabSwipeGesture({
       cancelHoldTimer()
       if (dur > 0) {
         holdTimer = window.setTimeout(() => {
-          engage(0)
           holdTimer = null
+          if (lp) {
+            // Modern path: hand off to the caller (e.g. open a tab switcher).
+            // We deliberately don’t engage scrub so the gesture finishes here.
+            haptic('medium')
+            lp()
+            start = null
+          } else {
+            // Legacy path: hold engages the scrub-to-drag animation.
+            engage(0)
+          }
         }, dur)
       }
     }
@@ -302,6 +333,7 @@ export function useTabSwipeGesture({
         axisRatio: ratio,
         longPressMs: dur,
         longPressSlop: holdSlop,
+        immediateDrag: drag,
       } = optsRef.current
 
       if (engaged) {
@@ -312,18 +344,19 @@ export function useTabSwipeGesture({
         return
       }
 
-      // Hold-mode: any motion past a small slop cancels the long-press so inner
+      // Any motion past the hold slop cancels the long-press timer so inner
       // swipe gestures (month nav, list/add) keep working normally.
-      if (dur > 0) {
-        if (Math.abs(dx) > holdSlop || Math.abs(dy) > holdSlop) {
-          cancelHoldTimer()
+      if (dur > 0 && (Math.abs(dx) > holdSlop || Math.abs(dy) > holdSlop)) {
+        cancelHoldTimer()
+        if (!drag) {
+          // Long-press-only screen: hand control back to inner gestures.
           start = null
+          return
         }
-        return
       }
 
-      // Immediate-mode: engage once the gesture is clearly horizontal.
-      if (Math.abs(dx) >= slop && Math.abs(dx) >= Math.abs(dy) * ratio) {
+      // Drag path: engage once the gesture is clearly horizontal.
+      if (drag && Math.abs(dx) >= slop && Math.abs(dx) >= Math.abs(dy) * ratio) {
         engage(dx)
         e.preventDefault()
         e.stopPropagation()

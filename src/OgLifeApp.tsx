@@ -6,6 +6,7 @@ import { usePullToRefresh } from './hooks/usePullToRefresh'
 import { ShoppingListView } from './components/ShoppingListView'
 import { CalendarSkeleton, ShoppingSkeleton } from './components/Skeletons'
 import { PullToRefreshIndicator } from './components/PullToRefreshIndicator'
+import { TabSwitcher } from './components/TabSwitcher'
 import { useInstallPrompt } from './contexts/InstallPromptContext'
 import { useAuth } from './lib/auth'
 import {
@@ -55,6 +56,7 @@ export default function OgLifeApp() {
   const [shoppingLoaded, setShoppingLoaded] = useState(false)
   const [eventsLoaded, setEventsLoaded] = useState(false)
   const [dashboardLoaded, setDashboardLoaded] = useState(false)
+  const [switcherOpen, setSwitcherOpen] = useState(false)
 
   useLayoutEffect(() => {
     const tab = searchParams.get('screen')
@@ -227,14 +229,19 @@ export default function OgLifeApp() {
     })
   }, [])
 
-  // Home: drag horizontally to engage immediately (no competing gesture there).
-  // Calendar / Shopping: must hold ~0.6s before scrub takes over, so quick swipes
-  // still belong to the inner views (month-swipe / list-add toggle).
+  // Gesture model:
+  //  - Home: horizontal drag engages scrub immediately (quick adjacent-tab
+  //    swipe), AND a still hold for 400ms opens the switcher.
+  //  - Calendar / Shopping: NO horizontal drag (inner views own the X axis);
+  //    a still hold for 400ms opens the switcher.
+  const openSwitcher = useCallback(() => setSwitcherOpen(true), [])
   const { rootRef: mainRef, innerRef: scrubInnerRef, scrubbing } = useTabSwipeGesture({
     onNext: onTabNext,
     onPrev: onTabPrev,
-    enabled: true,
-    longPressMs: screen === 'home' ? 0 : 400,
+    onLongPress: openSwitcher,
+    enabled: !switcherOpen,
+    longPressMs: 400,
+    immediateDrag: screen === 'home',
   })
 
   // Pull-to-refresh listens on the main scroll container at the bubble phase,
@@ -632,6 +639,21 @@ export default function OgLifeApp() {
           </button>
         </div>
       </nav>
+
+      <TabSwitcher
+        open={switcherOpen}
+        current={screen}
+        onClose={() => setSwitcherOpen(false)}
+        onSelect={(next) => setScreen(next)}
+        heroGreeting={heroGreeting}
+        today={today}
+        shoppingRemaining={shoppingRemaining}
+        purchasedCount={purchasedCount}
+        todaysEvents={todaysEvents}
+        upcomingEvents={upcoming}
+        calendarEvents={dashboardEvents}
+        shoppingItems={shopping}
+      />
     </div>
   )
 }
