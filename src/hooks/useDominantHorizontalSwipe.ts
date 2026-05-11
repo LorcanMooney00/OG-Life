@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 type Options = {
   onSwipeLeft?: () => void
@@ -165,4 +165,151 @@ export function useLockingHorizontalSwipeRef({
   }, [])
 
   return ref
+}
+
+type SwipeGestureOptions = {
+  onNext?: () => void
+  onPrev?: () => void
+  enabled?: boolean
+  /** Horizontal distance before the pop engages (px) */
+  engagementDistance?: number
+  /** Drag distance during scrub before release commits a tab change (px) */
+  commitDistance?: number
+  /** Horizontal dominance required vs vertical motion (1.0 = equal) */
+  axisRatio?: number
+}
+
+/**
+ * Swipe-with-pop tab gesture (One UI recent-apps feel, no long press required):
+ *  - Plain taps and vertical scrolls are untouched (we only engage once horizontal
+ *    motion is clearly dominant past `engagementDistance`).
+ *  - Once engaged, the inner element “pops” (scale + shadow via .is-scrubbing) and
+ *    follows the finger; release past `commitDistance` fires onNext / onPrev.
+ *  - Smaller drags snap back to flat.
+ */
+export function useTabSwipeGesture({
+  onNext,
+  onPrev,
+  enabled = true,
+  engagementDistance = 18,
+  commitDistance = 56,
+  axisRatio = 1.35,
+}: SwipeGestureOptions) {
+  const rootRef = useRef<HTMLElement | null>(null)
+  const innerRef = useRef<HTMLElement | null>(null)
+  const [scrubbing, setScrubbing] = useState(false)
+
+  const optsRef = useRef({ onNext, onPrev, enabled, engagementDistance, commitDistance, axisRatio })
+  optsRef.current = { onNext, onPrev, enabled, engagementDistance, commitDistance, axisRatio }
+
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+
+    let start: { x: number; y: number } | null = null
+    let engaged = false
+    let currentDx = 0
+
+    const applyScrubTransform = (dx: number) => {
+      const inner = innerRef.current
+      if (!inner) return
+      // Clamp so a huge fling doesn’t slide the card off forever.
+      const drift = Math.max(Math.min(dx, 220), -220)
+      const rot = drift / 80
+      inner.style.transform = `translate3d(${drift}px, 0, 0) rotate(${rot}deg) scale(0.94)`
+    }
+
+    const clearScrubTransform = () => {
+      const inner = innerRef.current
+      if (!inner) return
+      inner.style.transition = 'transform 220ms cubic-bezier(0.2,0.7,0.2,1)'
+      inner.style.transform = ''
+      const cleanup = () => {
+        inner.style.transition = ''
+        inner.removeEventListener('transitionend', cleanup)
+      }
+      inner.addEventListener('transitionend', cleanup)
+    }
+
+    const engage = (dx: number) => {
+      engaged = true
+      setScrubbing(true)
+      try {
+        navigator.vibrate?.(8)
+      } catch {
+        /* not all devices support haptics */
+      }
+      applyScrubTransform(dx)
+    }
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (!optsRef.current.enabled || e.touches.length !== 1) return
+      start = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+      engaged = false
+      currentDx = 0
+    }
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!start || e.touches.length !== 1) return
+      const t = e.touches[0]
+      const dx = t.clientX - start.x
+      const dy = t.clientY - start.y
+      const { engagementDistance: slop, axisRatio: ratio } = optsRef.current
+
+      if (engaged) {
+        e.preventDefault()
+        currentDx = dx
+        applyScrubTransform(dx)
+        return
+      }
+
+      if (Math.abs(dx) >= slop && Math.abs(dx) >= Math.abs(dy) * ratio) {
+        engage(dx)
+        e.preventDefault()
+        currentDx = dx
+      }
+    }
+
+    const onTouchEnd = () => {
+      if (!start) return
+      if (engaged) {
+        const { onNext: next, onPrev: prev, commitDistance: commit } = optsRef.current
+        let direction: 'next' | 'prev' | null = null
+        if (currentDx <= -commit) direction = 'next'
+        else if (currentDx >= commit) direction = 'prev'
+
+        engaged = false
+        setScrubbing(false)
+        clearScrubTransform()
+        if (direction === 'next') next?.()
+        else if (direction === 'prev') prev?.()
+      }
+      start = null
+      currentDx = 0
+    }
+
+    const onTouchCancel = () => {
+      if (engaged) {
+        engaged = false
+        setScrubbing(false)
+        clearScrubTransform()
+      }
+      start = null
+      currentDx = 0
+    }
+
+    root.addEventListener('touchstart', onTouchStart, { passive: true })
+    root.addEventListener('touchmove', onTouchMove, { passive: false })
+    root.addEventListener('touchend', onTouchEnd, { passive: true })
+    root.addEventListener('touchcancel', onTouchCancel, { passive: true })
+
+    return () => {
+      root.removeEventListener('touchstart', onTouchStart)
+      root.removeEventListener('touchmove', onTouchMove)
+      root.removeEventListener('touchend', onTouchEnd)
+      root.removeEventListener('touchcancel', onTouchCancel)
+    }
+  }, [])
+
+  return { rootRef, innerRef, scrubbing }
 }

@@ -84,3 +84,22 @@ body {
     animation: none;
   }
 }
+
+/* Hold-to-pop scrub wrapper: gives the active screen depth while the user is
+   tab-scrubbing (long-press + drag horizontally to switch tabs). */
+.tab-scrub-wrapper {
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+.tab-scrub-wrapper.is-scrubbing {
+  border-radius: 18px;
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.45),
+    0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-scrub-wrapper {
+    will-change: auto;
+  }
+}

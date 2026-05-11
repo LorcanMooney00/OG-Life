@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarView } from './components/CalendarView'
-import { useDominantHorizontalSwipe } from './hooks/useDominantHorizontalSwipe'
+import { useTabSwipeGesture } from './hooks/useDominantHorizontalSwipe'
 import { ShoppingListView } from './components/ShoppingListView'
 import { useInstallPrompt } from './contexts/InstallPromptContext'
 import { useAuth } from './lib/auth'
@@ -151,16 +151,17 @@ export default function OgLifeApp() {
   ).length
   const shoppingRemaining = shopping.filter((item) => !item.purchased).length
 
-  const onTabSwipeLeft = useCallback(() => {
+  // Tab navigation is only available on the Home screen. On Calendar/Shopping
+  // the inner views own horizontal gestures (month nav / list-vs-add).
+  const onTabNext = useCallback(() => {
     setScreen((s) => {
-      // Calendar: month swipe lives on CalendarView. Shopping: list/add swipe on ShoppingListView.
       if (s === 'calendar' || s === 'shopping') return s
       const i = SCREEN_ORDER.indexOf(s)
       return SCREEN_ORDER[(i + 1) % SCREEN_ORDER.length]
     })
   }, [])
 
-  const onTabSwipeRight = useCallback(() => {
+  const onTabPrev = useCallback(() => {
     setScreen((s) => {
       if (s === 'calendar' || s === 'shopping') return s
       const i = SCREEN_ORDER.indexOf(s)
@@ -168,9 +169,10 @@ export default function OgLifeApp() {
     })
   }, [])
 
-  const tabSwipe = useDominantHorizontalSwipe({
-    onSwipeLeft: onTabSwipeLeft,
-    onSwipeRight: onTabSwipeRight,
+  const { rootRef: mainRef, innerRef: scrubInnerRef, scrubbing } = useTabSwipeGesture({
+    onNext: onTabNext,
+    onPrev: onTabPrev,
+    enabled: screen === 'home',
   })
 
   // Tilt-stack: figure out direction of the incoming tab so CSS can pick left/right anim.
@@ -259,15 +261,21 @@ export default function OgLifeApp() {
       </header>
 
       <main
-        {...tabSwipe}
-        className="mx-auto w-full min-w-0 max-w-lg min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 [touch-action:pan-x_pan-y] [-webkit-overflow-scrolling:touch]"
+        ref={mainRef}
+        className={`mx-auto w-full min-w-0 max-w-lg min-h-0 flex-1 ${
+          scrubbing ? 'overflow-hidden' : 'overflow-y-auto'
+        } overscroll-y-contain px-4 py-4 [touch-action:pan-x_pan-y] [-webkit-overflow-scrolling:touch]`}
         style={{
           paddingBottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))',
           paddingLeft: 'max(1rem, env(safe-area-inset-left))',
           paddingRight: 'max(1rem, env(safe-area-inset-right))',
         }}
       >
-        <div key={screen} data-dir={tiltDirection} className="tilt-stack-enter">
+        <div
+          ref={scrubInnerRef as React.RefObject<HTMLDivElement | null>}
+          className={`tab-scrub-wrapper ${scrubbing ? 'is-scrubbing' : ''}`}
+        >
+          <div key={screen} data-dir={tiltDirection} className="tilt-stack-enter">
           {screen === 'home' ? (
             <div className="ios-font space-y-4">
               <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
@@ -317,6 +325,7 @@ export default function OgLifeApp() {
           ) : (
             <ShoppingListView items={shopping} onChange={handleShoppingChange} />
           )}
+          </div>
         </div>
       </main>
 
