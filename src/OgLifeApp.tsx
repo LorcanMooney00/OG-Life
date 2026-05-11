@@ -208,7 +208,7 @@ export default function OgLifeApp() {
     onNext: onTabNext,
     onPrev: onTabPrev,
     enabled: true,
-    longPressMs: screen === 'home' ? 0 : 600,
+    longPressMs: screen === 'home' ? 0 : 400,
   })
 
   // Tilt-stack: figure out direction of the incoming tab so CSS can pick left/right anim.
