@@ -1,10 +1,21 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarView } from './components/CalendarView'
 import { useTabSwipeGesture } from './hooks/useDominantHorizontalSwipe'
 import { ShoppingListView } from './components/ShoppingListView'
 import { useInstallPrompt } from './contexts/InstallPromptContext'
 import { useAuth } from './lib/auth'
+import {
+  formatClockTime,
+  formatLongDate,
+  formatShortDayLabel,
+  greetingByHour,
+  toYmd,
+} from './lib/date'
+import {
+  nextUpcomingOccurrences,
+  occurrencesOnDate,
+} from './lib/calendarOccurrences'
 import {
   fetchCalendarEventsForDashboard,
   fetchCalendarEventsForMonth,
@@ -146,11 +157,33 @@ export default function OgLifeApp() {
     [userId],
   )
 
-  const today = new Date()
-  const upcomingEvents = dashboardEvents.filter(
-    (event) => event.recurrence !== 'none' || new Date(event.eventDate) >= today,
-  ).length
-  const shoppingRemaining = shopping.filter((item) => !item.purchased).length
+  // Compute dashboard slices off the cached events/shopping data. Memoised so we don’t
+  // re-expand recurrences on every keystroke / poll.
+  const dashboardSummary = useMemo(() => {
+    const today = new Date()
+    const todaysEvents = occurrencesOnDate(dashboardEvents, today)
+    const upcoming = nextUpcomingOccurrences(dashboardEvents, today, 14, 4).filter(
+      (o) => o.ymd !== toYmd(today),
+    )
+    const remaining = shopping.filter((i) => !i.purchased)
+    return {
+      today,
+      todaysEvents,
+      upcoming,
+      remaining,
+      purchasedCount: shopping.length - remaining.length,
+    }
+  }, [dashboardEvents, shopping])
+
+  const { today, todaysEvents, upcoming, remaining, purchasedCount } = dashboardSummary
+  const upcomingEvents = todaysEvents.length + upcoming.length
+  const shoppingRemaining = remaining.length
+
+  const greetingName =
+    (user?.user_metadata?.username as string | undefined)?.trim() ||
+    user?.email?.split('@')[0] ||
+    'there'
+  const heroGreeting = `${greetingByHour(today.getHours())}, ${greetingName}`
 
   // Tab navigation: swipe-left = next (right tab), swipe-right = prev (left tab).
   // Clamps at the edges of SCREEN_ORDER (no wrap).
@@ -281,43 +314,202 @@ export default function OgLifeApp() {
           <div key={screen} data-dir={tiltDirection} className="tilt-stack-enter">
           {screen === 'home' ? (
             <div className="ios-font space-y-4">
-              <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
-                <p className="text-[13px] uppercase tracking-wide text-[#8e8e93]">
-                  Today at a glance
+              {/* Hero: greeting + date */}
+              <section className="relative overflow-hidden rounded-[16px] bg-gradient-to-br from-indigo-500/25 via-[#1c1c1e] to-[#1c1c1e] p-5 ring-1 ring-white/[0.08]">
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-indigo-500/15 blur-3xl"
+                />
+                <p className="text-[12px] font-medium uppercase tracking-[0.16em] text-indigo-200/80">
+                  {formatLongDate(today)}
                 </p>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  <div className="rounded-[10px] bg-[#2c2c2e] p-3 ring-1 ring-white/[0.06]">
-                    <p className="text-[12px] text-[#8e8e93]">Upcoming events</p>
-                    <p className="mt-1 text-2xl font-semibold text-white">{upcomingEvents}</p>
-                  </div>
-                  <div className="rounded-[10px] bg-[#2c2c2e] p-3 ring-1 ring-white/[0.06]">
-                    <p className="text-[12px] text-[#8e8e93]">Shopping left</p>
-                    <p className="mt-1 text-2xl font-semibold text-white">{shoppingRemaining}</p>
-                  </div>
+                <h2 className="mt-1 text-[22px] font-semibold leading-tight text-white">
+                  {heroGreeting}
+                </h2>
+                <p className="mt-1 text-[13px] text-[#a1a1aa]">
+                  {todaysEvents.length === 0 && upcoming.length === 0 && shoppingRemaining === 0
+                    ? 'You’re all caught up. Enjoy the calm.'
+                    : todaysEvents.length > 0
+                      ? `${todaysEvents.length} thing${todaysEvents.length === 1 ? '' : 's'} on today${shoppingRemaining > 0 ? ` · ${shoppingRemaining} to grab` : ''}.`
+                      : shoppingRemaining > 0
+                        ? `${shoppingRemaining} item${shoppingRemaining === 1 ? '' : 's'} still on the shopping list.`
+                        : `${upcoming.length} thing${upcoming.length === 1 ? '' : 's'} coming up soon.`}
+                </p>
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setScreen('calendar')}
+                    className="rounded-[12px] bg-white/[0.04] p-3 text-left ring-1 ring-white/[0.06] transition active:bg-white/[0.08]"
+                  >
+                    <p className="text-[11px] uppercase tracking-wide text-[#8e8e93]">
+                      Upcoming
+                    </p>
+                    <p className="mt-1 text-[26px] font-semibold leading-none text-white">
+                      {upcomingEvents}
+                    </p>
+                    <p className="mt-1 text-[11px] text-[#8e8e93]">events ahead</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScreen('shopping')}
+                    className="rounded-[12px] bg-white/[0.04] p-3 text-left ring-1 ring-white/[0.06] transition active:bg-white/[0.08]"
+                  >
+                    <p className="text-[11px] uppercase tracking-wide text-[#8e8e93]">
+                      Shopping
+                    </p>
+                    <p className="mt-1 text-[26px] font-semibold leading-none text-white">
+                      {shoppingRemaining}
+                    </p>
+                    <p className="mt-1 text-[11px] text-[#8e8e93]">
+                      {purchasedCount > 0 ? `${purchasedCount} done` : 'left to grab'}
+                    </p>
+                  </button>
                 </div>
               </section>
 
-              <button
-                type="button"
-                onClick={() => setScreen('calendar')}
-                className="w-full rounded-[12px] bg-[#2c2c2e] p-4 text-left ring-1 ring-white/[0.08] transition active:bg-[#3a3a3c]"
-              >
-                <p className="text-[17px] font-semibold text-white">📅 Calendar</p>
-                <p className="mt-1 text-[13px] text-[#8e8e93]">
-                  Plan events, recurring reminders, and your week.
-                </p>
-              </button>
+              {/* Today’s events — hidden entirely when nothing’s on. */}
+              {todaysEvents.length > 0 ? (
+                <section className="rounded-[16px] bg-[#1c1c1e] ring-1 ring-white/[0.08]">
+                  <header className="flex items-center justify-between px-4 pt-4">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-[#8e8e93]">
+                        Today
+                      </p>
+                      <h3 className="mt-0.5 text-[17px] font-semibold text-white">
+                        On your plate
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setScreen('calendar')}
+                      className="rounded-full bg-indigo-500/15 px-3 py-1 text-[12px] font-medium text-indigo-200 transition active:bg-indigo-500/25"
+                    >
+                      Open
+                    </button>
+                  </header>
+                  <div className="mt-3 divide-y divide-white/[0.04]">
+                    {todaysEvents.map((o) => (
+                      <div
+                        key={o.event.id + '::today'}
+                        className="flex items-start gap-3 px-4 py-3"
+                      >
+                        <div className="flex w-14 flex-shrink-0 flex-col items-start">
+                          <p className="text-[13px] font-semibold text-indigo-200">
+                            {formatClockTime(o.event.eventTime) ?? 'All day'}
+                          </p>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[15px] font-medium text-white">
+                            {o.event.title || 'Untitled'}
+                          </p>
+                          {o.event.notes ? (
+                            <p className="mt-0.5 truncate text-[12px] text-[#8e8e93]">
+                              {o.event.notes}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
 
-              <button
-                type="button"
-                onClick={() => setScreen('shopping')}
-                className="w-full rounded-[12px] bg-[#2c2c2e] p-4 text-left ring-1 ring-white/[0.08] transition active:bg-[#3a3a3c]"
-              >
-                <p className="text-[17px] font-semibold text-white">🛒 Shopping list</p>
-                <p className="mt-1 text-[13px] text-[#8e8e93]">
-                  Add quickly, tick off items, and keep things tidy.
-                </p>
-              </button>
+              {/* Coming up */}
+              {upcoming.length > 0 ? (
+                <section className="rounded-[16px] bg-[#1c1c1e] ring-1 ring-white/[0.08]">
+                  <header className="flex items-center justify-between px-4 pt-4">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-[#8e8e93]">
+                        Coming up
+                      </p>
+                      <h3 className="mt-0.5 text-[17px] font-semibold text-white">
+                        Next two weeks
+                      </h3>
+                    </div>
+                  </header>
+                  <div className="mt-3 divide-y divide-white/[0.04]">
+                    {upcoming.map((o) => (
+                      <div
+                        key={o.event.id + '::' + o.ymd}
+                        className="flex items-start gap-3 px-4 py-3"
+                      >
+                        <div className="flex w-20 flex-shrink-0 flex-col items-start">
+                          <p className="text-[12px] font-semibold text-white">
+                            {formatShortDayLabel(o.date)}
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-[#8e8e93]">
+                            {formatClockTime(o.event.eventTime) ?? 'All day'}
+                          </p>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[15px] font-medium text-white">
+                            {o.event.title || 'Untitled'}
+                          </p>
+                          {o.event.notes ? (
+                            <p className="mt-0.5 truncate text-[12px] text-[#8e8e93]">
+                              {o.event.notes}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
+              {/* Shopping snapshot — hidden entirely when the cart is empty. */}
+              {shoppingRemaining > 0 ? (
+                <section className="rounded-[16px] bg-[#1c1c1e] ring-1 ring-white/[0.08]">
+                  <header className="flex items-center justify-between px-4 pt-4">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-[#8e8e93]">
+                        Shopping list
+                      </p>
+                      <h3 className="mt-0.5 text-[17px] font-semibold text-white">
+                        {`${shoppingRemaining} to grab`}
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setScreen('shopping')}
+                      className="rounded-full bg-indigo-500/15 px-3 py-1 text-[12px] font-medium text-indigo-200 transition active:bg-indigo-500/25"
+                    >
+                      Open
+                    </button>
+                  </header>
+                  <div className="mt-3 divide-y divide-white/[0.04]">
+                    {remaining.slice(0, 5).map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 px-4 py-3"
+                      >
+                        <span
+                          aria-hidden
+                          className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-indigo-400/80"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[15px] text-white">{item.name}</p>
+                        </div>
+                        {item.quantity ? (
+                          <span className="flex-shrink-0 rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] text-[#a1a1aa]">
+                            {item.quantity}
+                          </span>
+                        ) : null}
+                      </div>
+                    ))}
+                    {shoppingRemaining > 5 ? (
+                      <button
+                        type="button"
+                        onClick={() => setScreen('shopping')}
+                        className="w-full px-4 py-3 text-left text-[13px] font-medium text-indigo-300 active:bg-white/[0.04]"
+                      >
+                        +{shoppingRemaining - 5} more
+                      </button>
+                    ) : null}
+                  </div>
+                </section>
+              ) : null}
             </div>
           ) : screen === 'calendar' ? (
             <CalendarView
