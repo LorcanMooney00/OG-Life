@@ -55,6 +55,7 @@ const recurrenceLabels: Record<CalendarEvent['recurrence'], string> = {
   daily: 'Every day',
   weekly: 'Every week',
   biweekly: 'Every 2 weeks',
+  every4weeks: 'Every 4 weeks',
   monthly: 'Every month',
 }
 
@@ -186,6 +187,8 @@ export function CalendarView({ events, onChange, onVisibleMonthChange }: Props) 
         cursorDate.setDate(cursorDate.getDate() + 7)
       } else if (event.recurrence === 'biweekly') {
         cursorDate.setDate(cursorDate.getDate() + 14)
+      } else if (event.recurrence === 'every4weeks') {
+        cursorDate.setDate(cursorDate.getDate() + 28)
       } else {
         const targetDay = start.getDate()
         const nextMonthFirst = new Date(
@@ -592,6 +595,7 @@ export function CalendarView({ events, onChange, onVisibleMonthChange }: Props) 
                     <option value="daily">Every day</option>
                     <option value="weekly">Every week</option>
                     <option value="biweekly">Every 2 weeks</option>
+                    <option value="every4weeks">Every 4 weeks</option>
                     <option value="monthly">Every month</option>
                   </select>
                 </div>

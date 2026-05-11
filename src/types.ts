@@ -4,7 +4,7 @@ export type CalendarEvent = {
   notes: string
   eventDate: string
   eventTime: string | null
-  recurrence: 'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly'
+  recurrence: 'none' | 'daily' | 'weekly' | 'biweekly' | 'every4weeks' | 'monthly'
   recurrenceEndDate: string | null
   createdAt: string
 }

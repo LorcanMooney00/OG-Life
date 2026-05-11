@@ -83,7 +83,7 @@ create table if not exists public.calendar_events (
   event_date date not null,
   event_time text,
   recurrence text not null default 'none'
-    check (recurrence in ('none', 'daily', 'weekly', 'biweekly', 'monthly')),
+    check (recurrence in ('none', 'daily', 'weekly', 'biweekly', 'every4weeks', 'monthly')),
   recurrence_end_date date,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

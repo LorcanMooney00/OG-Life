@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarView } from './components/CalendarView'
 import { useDominantHorizontalSwipe } from './hooks/useDominantHorizontalSwipe'
@@ -17,6 +17,8 @@ import type { CalendarEvent, ShoppingItem } from './types'
 
 type Tab = 'calendar' | 'shopping'
 type Screen = 'home' | Tab
+
+const SCREEN_ORDER: Screen[] = ['home', 'calendar', 'shopping']
 
 export default function OgLifeApp() {
   const { user } = useAuth()
@@ -153,18 +155,16 @@ export default function OgLifeApp() {
     setScreen((s) => {
       // Calendar: month swipe lives on CalendarView. Shopping: list/add swipe on ShoppingListView.
       if (s === 'calendar' || s === 'shopping') return s
-      const order: Screen[] = ['home', 'calendar', 'shopping']
-      const i = order.indexOf(s)
-      return order[(i + 1) % 3]
+      const i = SCREEN_ORDER.indexOf(s)
+      return SCREEN_ORDER[(i + 1) % SCREEN_ORDER.length]
     })
   }, [])
 
   const onTabSwipeRight = useCallback(() => {
     setScreen((s) => {
       if (s === 'calendar' || s === 'shopping') return s
-      const order: Screen[] = ['home', 'calendar', 'shopping']
-      const i = order.indexOf(s)
-      return order[(i + 2) % 3]
+      const i = SCREEN_ORDER.indexOf(s)
+      return SCREEN_ORDER[(i + SCREEN_ORDER.length - 1) % SCREEN_ORDER.length]
     })
   }, [])
 
@@ -172,6 +172,14 @@ export default function OgLifeApp() {
     onSwipeLeft: onTabSwipeLeft,
     onSwipeRight: onTabSwipeRight,
   })
+
+  // Tilt-stack: figure out direction of the incoming tab so CSS can pick left/right anim.
+  const prevScreenRef = useRef<Screen>(screen)
+  const tiltDirection: 'next' | 'prev' =
+    SCREEN_ORDER.indexOf(screen) > SCREEN_ORDER.indexOf(prevScreenRef.current) ? 'next' : 'prev'
+  useEffect(() => {
+    prevScreenRef.current = screen
+  }, [screen])
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-slate-950 text-slate-100">
@@ -259,55 +267,57 @@ export default function OgLifeApp() {
           paddingRight: 'max(1rem, env(safe-area-inset-right))',
         }}
       >
-        {screen === 'home' ? (
-          <div className="ios-font space-y-4">
-            <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
-              <p className="text-[13px] uppercase tracking-wide text-[#8e8e93]">
-                Today at a glance
-              </p>
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <div className="rounded-[10px] bg-[#2c2c2e] p-3 ring-1 ring-white/[0.06]">
-                  <p className="text-[12px] text-[#8e8e93]">Upcoming events</p>
-                  <p className="mt-1 text-2xl font-semibold text-white">{upcomingEvents}</p>
+        <div key={screen} data-dir={tiltDirection} className="tilt-stack-enter">
+          {screen === 'home' ? (
+            <div className="ios-font space-y-4">
+              <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
+                <p className="text-[13px] uppercase tracking-wide text-[#8e8e93]">
+                  Today at a glance
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div className="rounded-[10px] bg-[#2c2c2e] p-3 ring-1 ring-white/[0.06]">
+                    <p className="text-[12px] text-[#8e8e93]">Upcoming events</p>
+                    <p className="mt-1 text-2xl font-semibold text-white">{upcomingEvents}</p>
+                  </div>
+                  <div className="rounded-[10px] bg-[#2c2c2e] p-3 ring-1 ring-white/[0.06]">
+                    <p className="text-[12px] text-[#8e8e93]">Shopping left</p>
+                    <p className="mt-1 text-2xl font-semibold text-white">{shoppingRemaining}</p>
+                  </div>
                 </div>
-                <div className="rounded-[10px] bg-[#2c2c2e] p-3 ring-1 ring-white/[0.06]">
-                  <p className="text-[12px] text-[#8e8e93]">Shopping left</p>
-                  <p className="mt-1 text-2xl font-semibold text-white">{shoppingRemaining}</p>
-                </div>
-              </div>
-            </section>
+              </section>
 
-            <button
-              type="button"
-              onClick={() => setScreen('calendar')}
-              className="w-full rounded-[12px] bg-[#2c2c2e] p-4 text-left ring-1 ring-white/[0.08] transition active:bg-[#3a3a3c]"
-            >
-              <p className="text-[17px] font-semibold text-white">📅 Calendar</p>
-              <p className="mt-1 text-[13px] text-[#8e8e93]">
-                Plan events, recurring reminders, and your week.
-              </p>
-            </button>
+              <button
+                type="button"
+                onClick={() => setScreen('calendar')}
+                className="w-full rounded-[12px] bg-[#2c2c2e] p-4 text-left ring-1 ring-white/[0.08] transition active:bg-[#3a3a3c]"
+              >
+                <p className="text-[17px] font-semibold text-white">📅 Calendar</p>
+                <p className="mt-1 text-[13px] text-[#8e8e93]">
+                  Plan events, recurring reminders, and your week.
+                </p>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setScreen('shopping')}
-              className="w-full rounded-[12px] bg-[#2c2c2e] p-4 text-left ring-1 ring-white/[0.08] transition active:bg-[#3a3a3c]"
-            >
-              <p className="text-[17px] font-semibold text-white">🛒 Shopping list</p>
-              <p className="mt-1 text-[13px] text-[#8e8e93]">
-                Add quickly, tick off items, and keep things tidy.
-              </p>
-            </button>
-          </div>
-        ) : screen === 'calendar' ? (
-          <CalendarView
-            events={events}
-            onChange={handleEventsChange}
-            onVisibleMonthChange={onVisibleMonthChange}
-          />
-        ) : (
-          <ShoppingListView items={shopping} onChange={handleShoppingChange} />
-        )}
+              <button
+                type="button"
+                onClick={() => setScreen('shopping')}
+                className="w-full rounded-[12px] bg-[#2c2c2e] p-4 text-left ring-1 ring-white/[0.08] transition active:bg-[#3a3a3c]"
+              >
+                <p className="text-[17px] font-semibold text-white">🛒 Shopping list</p>
+                <p className="mt-1 text-[13px] text-[#8e8e93]">
+                  Add quickly, tick off items, and keep things tidy.
+                </p>
+              </button>
+            </div>
+          ) : screen === 'calendar' ? (
+            <CalendarView
+              events={events}
+              onChange={handleEventsChange}
+              onVisibleMonthChange={onVisibleMonthChange}
+            />
+          ) : (
+            <ShoppingListView items={shopping} onChange={handleShoppingChange} />
+          )}
+        </div>
       </main>
 
       <nav
