@@ -101,3 +101,31 @@ export function nextUpcomingOccurrences(
   const all = collectOccurrencesInRange(events, start, end)
   return all.slice(0, limit)
 }
+
+/**
+ * The single next *actionable* occurrence used by the Home hero’s “Next up”
+ * tile. A timed event is considered past once `now` crosses its start; an
+ * all-day event is considered ongoing until end-of-day. Returns `null` when
+ * nothing within `lookaheadDays` qualifies.
+ */
+export function findNextOccurrence(
+  events: CalendarEvent[],
+  now: Date,
+  lookaheadDays = 30,
+): EventOccurrence | null {
+  const start = startOfDay(now)
+  const end = endOfDay(addDays(start, lookaheadDays))
+  const all = collectOccurrencesInRange(events, start, end)
+  for (const o of all) {
+    if (o.event.eventTime) {
+      const [h, m] = o.event.eventTime.split(':').map(Number)
+      const dt = new Date(o.date)
+      dt.setHours(h ?? 0, m ?? 0, 0, 0)
+      if (dt.getTime() > now.getTime()) return o
+    } else {
+      // All-day events stay "next" through the rest of their day.
+      if (o.date.getTime() >= start.getTime()) return o
+    }
+  }
+  return null
+}

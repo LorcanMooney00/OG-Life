@@ -12,11 +12,14 @@ import { useAuth } from './lib/auth'
 import {
   formatClockTime,
   formatLongDate,
+  formatNextWhen,
   formatShortDayLabel,
   greetingByHour,
+  moodByHour,
   toYmd,
 } from './lib/date'
 import {
+  findNextOccurrence,
   nextUpcomingOccurrences,
   occurrencesOnDate,
 } from './lib/calendarOccurrences'
@@ -185,27 +188,41 @@ export default function OgLifeApp() {
     [userId],
   )
 
+  // Tick the clock every minute so the Home hero’s “in 1h 23m” countdown stays
+  // honest without us recomputing the heavier event slices on a timer.
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60_000)
+    return () => window.clearInterval(id)
+  }, [])
+
   // Compute dashboard slices off the cached events/shopping data. Memoised so we don’t
   // re-expand recurrences on every keystroke / poll.
   const dashboardSummary = useMemo(() => {
-    const today = new Date()
+    const today = now
     const todaysEvents = occurrencesOnDate(dashboardEvents, today)
     const upcoming = nextUpcomingOccurrences(dashboardEvents, today, 14, 4).filter(
       (o) => o.ymd !== toYmd(today),
     )
     const remaining = shopping.filter((i) => !i.purchased)
+    const nextOccurrence = findNextOccurrence(dashboardEvents, today, 30)
     return {
       today,
       todaysEvents,
       upcoming,
       remaining,
       purchasedCount: shopping.length - remaining.length,
+      nextOccurrence,
     }
-  }, [dashboardEvents, shopping])
+  }, [dashboardEvents, shopping, now])
 
-  const { today, todaysEvents, upcoming, remaining, purchasedCount } = dashboardSummary
-  const upcomingEvents = todaysEvents.length + upcoming.length
+  const { today, todaysEvents, upcoming, remaining, purchasedCount, nextOccurrence } =
+    dashboardSummary
   const shoppingRemaining = remaining.length
+  const mood = moodByHour(today.getHours())
+  const nextWhen = nextOccurrence
+    ? formatNextWhen(nextOccurrence.date, nextOccurrence.event.eventTime, today)
+    : null
 
   const greetingName =
     (user?.user_metadata?.username as string | undefined)?.trim() ||
@@ -373,60 +390,117 @@ export default function OgLifeApp() {
           <div key={screen} data-dir={tiltDirection} className="tilt-stack-enter">
           {screen === 'home' ? (
             <div className="ios-font space-y-4">
-              {/* Hero: greeting + date */}
-              <section className="relative overflow-hidden rounded-[16px] bg-gradient-to-br from-indigo-500/25 via-[#1c1c1e] to-[#1c1c1e] p-5 ring-1 ring-white/[0.08]">
+              {/* Hero: time-of-day mood + single focus tile (next event /
+                  shopping nudge / all-clear). Replaces the old stat-tile pair
+                  so the eye lands on the one thing that matters right now. */}
+              <section
+                className="relative overflow-hidden rounded-[20px] p-5 ring-1 ring-white/[0.08]"
+                style={{
+                  background: `linear-gradient(135deg, ${mood.from}44 0%, ${mood.via} 65%, #0a0a0d 100%)`,
+                }}
+              >
+                {/* Soft accent orb — picks up the mood colour to give the
+                    card a tiny bit of depth without an illustration. */}
                 <div
                   aria-hidden
-                  className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-indigo-500/15 blur-3xl"
+                  className="pointer-events-none absolute -right-14 -top-14 h-48 w-48 rounded-full blur-3xl"
+                  style={{ background: mood.from, opacity: 0.22 }}
                 />
-                <p className="text-[12px] font-medium uppercase tracking-[0.16em] text-indigo-200/80">
+
+                <p
+                  className="relative text-[11px] font-semibold uppercase tracking-[0.18em]"
+                  style={{ color: mood.accent }}
+                >
                   {formatLongDate(today)}
                 </p>
-                <h2 className="mt-1 text-[22px] font-semibold leading-tight text-white">
+                <h2 className="relative mt-2 text-[26px] font-semibold leading-tight text-white">
                   {heroGreeting}
                 </h2>
-                <p className="mt-1 text-[13px] text-[#a1a1aa]">
-                  {!dashboardLoaded || !shoppingLoaded
-                    ? 'Loading your day…'
-                    : todaysEvents.length === 0 && upcoming.length === 0 && shoppingRemaining === 0
-                      ? 'You’re all caught up. Enjoy the calm.'
-                      : todaysEvents.length > 0
-                        ? `${todaysEvents.length} thing${todaysEvents.length === 1 ? '' : 's'} on today${shoppingRemaining > 0 ? ` · ${shoppingRemaining} to grab` : ''}.`
-                        : shoppingRemaining > 0
-                          ? `${shoppingRemaining} item${shoppingRemaining === 1 ? '' : 's'} still on the shopping list.`
-                          : `${upcoming.length} thing${upcoming.length === 1 ? '' : 's'} coming up soon.`}
-                </p>
 
-                <div className="mt-4 grid grid-cols-2 gap-3">
+                {/* Focus tile — exactly one of:
+                    1) next event with live countdown,
+                    2) shopping nudge when there's nothing on the calendar,
+                    3) all-clear card when both are empty.
+                    Loading state shows a soft placeholder so the hero never
+                    collapses to a thin line on first paint. */}
+                {!dashboardLoaded || !shoppingLoaded ? (
+                  <div className="relative mt-5 h-[88px] rounded-[14px] bg-white/[0.05] ring-1 ring-white/[0.04]" />
+                ) : nextOccurrence && nextWhen ? (
                   <button
                     type="button"
                     onClick={() => setScreen('calendar')}
-                    className="rounded-[12px] bg-white/[0.04] p-3 text-left ring-1 ring-white/[0.06] transition active:bg-white/[0.08]"
+                    className="relative mt-5 flex w-full items-center gap-3 rounded-[14px] bg-black/30 px-4 py-3.5 text-left ring-1 ring-white/[0.06] backdrop-blur transition active:bg-black/40"
                   >
-                    <p className="text-[11px] uppercase tracking-wide text-[#8e8e93]">
-                      Upcoming
-                    </p>
-                    <p className="mt-1 text-[26px] font-semibold leading-none text-white">
-                      {upcomingEvents}
-                    </p>
-                    <p className="mt-1 text-[11px] text-[#8e8e93]">events ahead</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">
+                        Next up
+                      </p>
+                      <p className="mt-0.5 truncate text-[17px] font-semibold text-white">
+                        {nextOccurrence.event.title || 'Untitled'}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        {nextWhen.countdown ? (
+                          <span
+                            className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                            style={{
+                              background: `${mood.accent}33`,
+                              color: mood.accent,
+                            }}
+                          >
+                            {nextWhen.countdown}
+                          </span>
+                        ) : null}
+                        <span className="text-[12px] text-white/60">
+                          {nextWhen.when}
+                        </span>
+                      </div>
+                    </div>
+                    <span
+                      aria-hidden
+                      className="flex-shrink-0 text-[20px] leading-none text-white/40"
+                    >
+                      →
+                    </span>
                   </button>
+                ) : shoppingRemaining > 0 ? (
                   <button
                     type="button"
                     onClick={() => setScreen('shopping')}
-                    className="rounded-[12px] bg-white/[0.04] p-3 text-left ring-1 ring-white/[0.06] transition active:bg-white/[0.08]"
+                    className="relative mt-5 flex w-full items-center gap-3 rounded-[14px] bg-black/30 px-4 py-3.5 text-left ring-1 ring-white/[0.06] backdrop-blur transition active:bg-black/40"
                   >
-                    <p className="text-[11px] uppercase tracking-wide text-[#8e8e93]">
-                      Shopping
-                    </p>
-                    <p className="mt-1 text-[26px] font-semibold leading-none text-white">
-                      {shoppingRemaining}
-                    </p>
-                    <p className="mt-1 text-[11px] text-[#8e8e93]">
-                      {purchasedCount > 0 ? `${purchasedCount} done` : 'left to grab'}
-                    </p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">
+                        On the list
+                      </p>
+                      <p className="mt-0.5 text-[17px] font-semibold text-white">
+                        {shoppingRemaining === 1
+                          ? '1 item to grab'
+                          : `${shoppingRemaining} items to grab`}
+                      </p>
+                      <p className="mt-1 text-[12px] text-white/60">
+                        Tap to open the shopping list.
+                      </p>
+                    </div>
+                    <span
+                      aria-hidden
+                      className="flex-shrink-0 text-[20px] leading-none text-white/40"
+                    >
+                      →
+                    </span>
                   </button>
-                </div>
+                ) : (
+                  <div className="relative mt-5 rounded-[14px] bg-black/20 px-4 py-3.5 ring-1 ring-white/[0.06] backdrop-blur">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">
+                      All clear
+                    </p>
+                    <p className="mt-0.5 text-[17px] font-semibold text-white">
+                      Nothing on the books.
+                    </p>
+                    <p className="mt-1 text-[12px] text-white/60">
+                      Enjoy the calm.
+                    </p>
+                  </div>
+                )}
               </section>
 
               {/* Today’s events — hidden entirely when nothing’s on. */}
