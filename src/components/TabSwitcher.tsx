@@ -147,7 +147,7 @@ export function TabSwitcher({
         style={{ scrollSnapType: 'x mandatory' }}
       >
         <div
-          className="flex h-full items-center gap-5"
+          className="flex h-full items-center"
           style={{
             paddingLeft: 'max(2rem, calc(50vw - 9rem))',
             paddingRight: 'max(2rem, calc(50vw - 9rem))',
@@ -155,44 +155,66 @@ export function TabSwitcher({
         >
           {order.map((id, i) => {
             const isCurrent = id === current
+            // Stacked-deck pose: cards lean toward the currently-open tab and
+            // overlap each other by ~10% of their width. The 100% keyframe of
+            // `.tab-switcher-card` reads these vars, so the rise-in animation
+            // settles directly into the rest pose without a second transition.
+            const offset = i - order.indexOf(current)
+            const tilt = offset === 0 ? 0 : offset < 0 ? 4 : -4
+            const scale = offset === 0 ? 1 : 0.94
+            // Cast lets us pass through custom CSS properties (`--rest-rotate`,
+            // `--rest-scale`) without fighting TypeScript over the index sig.
+            const cardStyle = {
+              animationDelay: `${i * 50}ms`,
+              scrollSnapAlign: 'center',
+              marginLeft: i === 0 ? '0px' : '-28px',
+              zIndex: isCurrent ? 30 : 20 - Math.abs(offset),
+              '--rest-rotate': `${tilt}deg`,
+              '--rest-scale': String(scale),
+            } as React.CSSProperties
+
             return (
-              <button
+              <div
                 key={id}
-                ref={(el) => {
-                  cardRefs.current[id] = el
-                }}
-                type="button"
-                onClick={() => handlePick(id)}
-                style={{
-                  animationDelay: `${i * 50}ms`,
-                  scrollSnapAlign: 'center',
-                }}
-                className={`tab-switcher-card group relative flex h-[min(72vh,560px)] w-[min(78vw,300px)] flex-shrink-0 flex-col overflow-hidden rounded-[24px] text-left ring-1 transition-transform active:scale-[0.98] ${
-                  isCurrent
-                    ? 'shadow-[0_24px_60px_rgba(79,70,229,0.35)] ring-indigo-300/50'
-                    : 'shadow-[0_18px_40px_rgba(0,0,0,0.45)] ring-white/[0.1]'
-                }`}
+                className="tab-switcher-card flex-shrink-0"
+                style={cardStyle}
               >
-                {id === 'calendar' ? (
-                  <CalendarPreview today={today} events={calendarEvents} />
-                ) : id === 'home' ? (
-                  <HomePreview
-                    today={today}
-                    heroGreeting={heroGreeting}
-                    todaysEvents={todaysEvents}
-                    upcomingEvents={upcomingEvents}
-                    shoppingRemaining={shoppingRemaining}
-                    purchasedCount={purchasedCount}
-                  />
-                ) : (
-                  <ShoppingPreview items={shoppingItems} />
-                )}
-                {isCurrent ? (
-                  <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-indigo-400/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-100 ring-1 ring-indigo-300/40 backdrop-blur">
-                    Open
-                  </span>
-                ) : null}
-              </button>
+                <button
+                  ref={(el) => {
+                    cardRefs.current[id] = el
+                  }}
+                  type="button"
+                  onClick={() => handlePick(id)}
+                  // active:brightness-95 replaces the previous active:scale —
+                  // an extra transform on the button would compete with the
+                  // wrapper’s tilt/scale and snap the card out of position.
+                  className={`relative flex h-[min(72vh,560px)] w-[min(78vw,300px)] flex-col overflow-hidden rounded-[24px] text-left ring-1 transition-[filter] duration-150 active:brightness-90 ${
+                    isCurrent
+                      ? 'shadow-[0_24px_60px_rgba(79,70,229,0.35)] ring-indigo-300/50'
+                      : 'shadow-[0_18px_40px_rgba(0,0,0,0.45)] ring-white/[0.1]'
+                  }`}
+                >
+                  {id === 'calendar' ? (
+                    <CalendarPreview today={today} events={calendarEvents} />
+                  ) : id === 'home' ? (
+                    <HomePreview
+                      today={today}
+                      heroGreeting={heroGreeting}
+                      todaysEvents={todaysEvents}
+                      upcomingEvents={upcomingEvents}
+                      shoppingRemaining={shoppingRemaining}
+                      purchasedCount={purchasedCount}
+                    />
+                  ) : (
+                    <ShoppingPreview items={shoppingItems} />
+                  )}
+                  {isCurrent ? (
+                    <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-indigo-400/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-100 ring-1 ring-indigo-300/40 backdrop-blur">
+                      Open
+                    </span>
+                  ) : null}
+                </button>
+              </div>
             )
           })}
         </div>

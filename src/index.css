@@ -108,8 +108,14 @@ body {
 .tab-switcher-enter {
   animation: tab-switcher-fade 180ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
+
+/* Each card has a *resting* transform composed from CSS custom properties so
+   call sites can per-card tilt/scale a stacked-deck look. The keyframe’s 100%
+   step reads the same vars, with `animation-fill-mode: both` so the rest pose
+   sticks once the rise-in finishes. */
 .tab-switcher-card {
-  /* Per-card stagger driven by inline animation-delay. */
+  --rest-rotate: 0deg;
+  --rest-scale: 1;
   animation: tab-switcher-card-rise 280ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
   transform-origin: 50% 50%;
   will-change: transform, opacity;
@@ -127,11 +133,11 @@ body {
 
 @keyframes tab-switcher-card-rise {
   0% {
-    transform: translate3d(0, 18px, 0) scale(0.94);
+    transform: translate3d(0, 18px, 0) scale(0.85);
     opacity: 0;
   }
   100% {
-    transform: none;
+    transform: rotate(var(--rest-rotate)) scale(var(--rest-scale));
     opacity: 1;
   }
 }
