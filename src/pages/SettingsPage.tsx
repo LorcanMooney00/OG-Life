@@ -242,9 +242,9 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-slate-950 text-slate-100">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-stone-950 text-stone-100">
       <header
-        className="shrink-0 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md"
+        className="shrink-0 border-b border-stone-800 bg-stone-950/90 backdrop-blur-md"
         style={{
           paddingTop: 'max(0.75rem, env(safe-area-inset-top))',
           paddingLeft: 'max(1rem, env(safe-area-inset-left))',
@@ -259,7 +259,7 @@ export default function SettingsPage() {
             ← Back
           </Link>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-300/90">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-300/90">
               OG Life
             </p>
             <h1 className="text-lg font-semibold text-white">Account & partner</h1>
@@ -273,14 +273,14 @@ export default function SettingsPage() {
           paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))',
         }}
       >
-        <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
+        <section className="rounded-[12px] bg-[#1c1618] p-4 ring-1 ring-white/[0.08]">
           <p className="text-[13px] uppercase tracking-wide text-[#8e8e93]">Signed in as</p>
           <p className="mt-1 truncate text-[17px] font-medium text-white">
             {user?.email ?? '—'}
           </p>
         </section>
 
-        <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
+        <section className="rounded-[12px] bg-[#1c1618] p-4 ring-1 ring-white/[0.08]">
           <p className="text-[15px] font-semibold text-white">Display name</p>
           <p className="mt-1 text-[13px] leading-snug text-[#8e8e93]">
             Used for the Home greeting and shown to any partners you’re linked with.
@@ -295,19 +295,19 @@ export default function SettingsPage() {
               placeholder="e.g. Lorcan"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded-[10px] border border-[#3a3a3c] bg-[#2c2c2e] px-3 py-3 text-[17px] text-white placeholder-[#8e8e93] focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full rounded-[10px] border border-[#3a322f] bg-[#26201f] px-3 py-3 text-[17px] text-white placeholder-[#8e8e93] focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
             <button
               type="submit"
               disabled={savingUsername || username.trim().length === 0}
-              className="w-full rounded-[10px] bg-indigo-600 py-3 text-[17px] font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+              className="w-full rounded-[10px] bg-amber-600 py-3 text-[17px] font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
             >
               {savingUsername ? 'Saving…' : 'Save display name'}
             </button>
           </form>
         </section>
 
-        <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
+        <section className="rounded-[12px] bg-[#1c1618] p-4 ring-1 ring-white/[0.08]">
           <p className="text-[15px] font-semibold text-white">Install on your device</p>
           <p className="mt-1 text-[13px] leading-snug text-[#8e8e93]">
             <span className="text-[#c7c7cc]">iPhone:</span> Apple only allows “install” from{' '}
@@ -325,7 +325,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => void promptInstall()}
-              className="mt-4 w-full rounded-[10px] bg-indigo-600 py-3 text-[17px] font-semibold text-white hover:bg-indigo-500"
+              className="mt-4 w-full rounded-[10px] bg-amber-600 py-3 text-[17px] font-semibold text-white hover:bg-amber-500"
             >
               Install OG Life
             </button>
@@ -344,22 +344,22 @@ export default function SettingsPage() {
           )}
         </section>
 
-        <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
+        <section className="rounded-[12px] bg-[#1c1618] p-4 ring-1 ring-white/[0.08]">
           <p className="text-[15px] font-semibold text-white">Push notifications (OneSignal)</p>
           <p className="mt-1 text-[13px] leading-snug text-[#8e8e93]">
-            Delivered through OneSignal. This app uses a scoped service worker under <code className="text-indigo-300/90">/onesignal/</code> so it can run alongside the PWA worker (Lifestyle had no PWA, so it used OneSignal’s default root worker). Configure custom worker URLs in OneSignal to match.
+            Delivered through OneSignal. This app uses a scoped service worker under <code className="text-amber-300/90">/onesignal/</code> so it can run alongside the PWA worker (Lifestyle had no PWA, so it used OneSignal’s default root worker). Configure custom worker URLs in OneSignal to match.
           </p>
           {!isOneSignalConfigured() ? (
             <p className="mt-3 text-[13px] text-[#8e8e93]">
-              Add <code className="text-indigo-300">VITE_ONESIGNAL_APP_ID</code> to your env and rebuild. Use the same
+              Add <code className="text-amber-300">VITE_ONESIGNAL_APP_ID</code> to your env and rebuild. Use the same
               Web app in OneSignal as this deployment’s origin.
             </p>
           ) : !osPush.ready ? (
             <p className="mt-3 text-[13px] text-[#8e8e93]">Checking this device…</p>
           ) : osPush.skippedLocalhost ? (
             <p className="mt-3 text-[13px] text-amber-200/90">
-              OneSignal is skipped on <code className="text-indigo-300/90">localhost</code> (same idea as Lifestyle). Open your deployed HTTPS URL to test push, or set{' '}
-              <code className="text-indigo-300/90">VITE_ONESIGNAL_ALLOW_LOCALHOST=true</code> for local experiments.
+              OneSignal is skipped on <code className="text-amber-300/90">localhost</code> (same idea as Lifestyle). Open your deployed HTTPS URL to test push, or set{' '}
+              <code className="text-amber-300/90">VITE_ONESIGNAL_ALLOW_LOCALHOST=true</code> for local experiments.
             </p>
           ) : !osPush.supported ? (
             <p className="mt-3 text-[13px] text-amber-200/90">This browser does not support web push.</p>
@@ -368,7 +368,7 @@ export default function SettingsPage() {
               type="button"
               disabled={pushBusy}
               onClick={() => void handleDisablePush()}
-              className="mt-4 w-full rounded-[10px] border border-[#3a3a3c] bg-[#2c2c2e] py-3 text-[17px] font-semibold text-white hover:bg-[#3a3a3c] disabled:opacity-50"
+              className="mt-4 w-full rounded-[10px] border border-[#3a322f] bg-[#26201f] py-3 text-[17px] font-semibold text-white hover:bg-[#3a322f] disabled:opacity-50"
             >
               {pushBusy ? 'Working…' : 'Turn off notifications on this device'}
             </button>
@@ -377,18 +377,18 @@ export default function SettingsPage() {
               type="button"
               disabled={pushBusy}
               onClick={() => void handleEnablePush()}
-              className="mt-4 w-full rounded-[10px] bg-indigo-600 py-3 text-[17px] font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+              className="mt-4 w-full rounded-[10px] bg-amber-600 py-3 text-[17px] font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
             >
               {pushBusy ? 'Working…' : 'Turn on notifications'}
             </button>
           )}
           <p className="mt-3 text-[12px] leading-snug text-[#8e8e93]">
-            Subscription IDs are saved to <code className="text-indigo-300/90">push_subscriptions.onesignal_player_id</code>{' '}
+            Subscription IDs are saved to <code className="text-amber-300/90">push_subscriptions.onesignal_player_id</code>{' '}
             for your own automations; campaigns can also be sent from the OneSignal dashboard.
           </p>
         </section>
 
-        <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
+        <section className="rounded-[12px] bg-[#1c1618] p-4 ring-1 ring-white/[0.08]">
           <p className="text-[15px] font-semibold text-white">Link partner</p>
           <p className="mt-1 text-[13px] leading-snug text-[#8e8e93]">
             Enter the email they used to sign up. We’ll connect both accounts so you share
@@ -401,19 +401,19 @@ export default function SettingsPage() {
               placeholder="Partner’s email"
               value={partnerEmail}
               onChange={(e) => setPartnerEmail(e.target.value)}
-              className="w-full rounded-[10px] border border-[#3a3a3c] bg-[#2c2c2e] px-3 py-3 text-[17px] text-white placeholder-[#8e8e93] focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full rounded-[10px] border border-[#3a322f] bg-[#26201f] px-3 py-3 text-[17px] text-white placeholder-[#8e8e93] focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
             <button
               type="submit"
               disabled={busy}
-              className="w-full rounded-[10px] bg-indigo-600 py-3 text-[17px] font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+              className="w-full rounded-[10px] bg-amber-600 py-3 text-[17px] font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
             >
               Link partner
             </button>
           </form>
         </section>
 
-        <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
+        <section className="rounded-[12px] bg-[#1c1618] p-4 ring-1 ring-white/[0.08]">
           <p className="text-[15px] font-semibold text-white">Linked partners</p>
           {loadingPartners ? (
             <p className="mt-3 text-[13px] text-[#8e8e93]">Loading…</p>
@@ -461,7 +461,7 @@ export default function SettingsPage() {
           type="button"
           disabled={busy}
           onClick={() => void handleSignOut()}
-          className="w-full rounded-[12px] border border-[#3a3a3c] bg-[#2c2c2e] py-3 text-[17px] font-semibold text-white hover:bg-[#3a3a3c] disabled:opacity-50"
+          className="w-full rounded-[12px] border border-[#3a322f] bg-[#26201f] py-3 text-[17px] font-semibold text-white hover:bg-[#3a322f] disabled:opacity-50"
         >
           Sign out
         </button>

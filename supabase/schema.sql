@@ -83,8 +83,13 @@ create table if not exists public.calendar_events (
   event_date date not null,
   event_time text,
   recurrence text not null default 'none'
-    check (recurrence in ('none', 'daily', 'weekly', 'biweekly', 'every4weeks', 'monthly')),
+    check (recurrence in ('none', 'daily', 'weekly', 'biweekly', 'every4weeks', 'monthly', 'yearly')),
   recurrence_end_date date,
+  -- Marks the event as an anniversary / birthday so the Home dashboard can
+  -- surface it as a countdown card in the week leading up. Pairs naturally
+  -- with `recurrence = 'yearly'` but isn't strictly tied to it (one can
+  -- mark a one-off as an anniversary too — e.g. "first date").
+  is_anniversary boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint calendar_title_len check (char_length(title) <= 500),

@@ -27,8 +27,8 @@ export default function LoginPage() {
 
   if (!isSupabaseConfigured) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-slate-950 px-4 text-slate-200">
-        <p className="text-center text-sm text-slate-400">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-stone-950 px-4 text-stone-200">
+        <p className="text-center text-sm text-stone-400">
           Configure Supabase env vars to sign in.
         </p>
       </div>
@@ -111,15 +111,15 @@ export default function LoginPage() {
 
   return (
     <div
-      className="flex min-h-0 flex-1 items-center justify-center bg-slate-950 px-4"
+      className="flex min-h-0 flex-1 items-center justify-center bg-stone-950 px-4"
       style={{
         paddingTop: 'max(1rem, env(safe-area-inset-top))',
         paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
       }}
     >
-      <div className="w-full max-w-md space-y-8 rounded-2xl border border-white/[0.08] bg-[#1c1c1e] p-8 shadow-2xl ring-1 ring-white/[0.06]">
+      <div className="w-full max-w-md space-y-8 rounded-2xl border border-white/[0.08] bg-[#1c1618] p-8 shadow-2xl ring-1 ring-white/[0.06]">
         <div>
-          <p className="text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-300/90">
+          <p className="text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-300/90">
             OG Life
           </p>
           <h2 className="mt-2 text-center text-2xl font-bold text-white">
@@ -165,7 +165,7 @@ export default function LoginPage() {
                   type="text"
                   autoComplete="username"
                   required
-                  className="relative z-10 block w-full appearance-none rounded-t-lg border border-[#3a3a3c] bg-[#2c2c2e] px-4 py-3 text-white placeholder-[#8e8e93] transition focus:z-20 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm"
+                  className="relative z-10 block w-full appearance-none rounded-t-lg border border-[#3a322f] bg-[#26201f] px-4 py-3 text-white placeholder-[#8e8e93] transition focus:z-20 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 sm:text-sm"
                   placeholder="Username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -182,7 +182,7 @@ export default function LoginPage() {
                 type="email"
                 autoComplete="email"
                 required
-                className={`relative z-10 block w-full appearance-none border border-[#3a3a3c] bg-[#2c2c2e] px-4 py-3 text-white placeholder-[#8e8e93] transition focus:z-20 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm ${
+                className={`relative z-10 block w-full appearance-none border border-[#3a322f] bg-[#26201f] px-4 py-3 text-white placeholder-[#8e8e93] transition focus:z-20 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 sm:text-sm ${
                   isSignUp && !showResetPassword ? '' : 'rounded-t-lg'
                 }`}
                 placeholder="Email"
@@ -201,7 +201,7 @@ export default function LoginPage() {
                   type="password"
                   autoComplete={isSignUp ? 'new-password' : 'current-password'}
                   required
-                  className="relative z-10 block w-full appearance-none rounded-b-lg border border-[#3a3a3c] bg-[#2c2c2e] px-4 py-3 text-white placeholder-[#8e8e93] transition focus:z-20 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm"
+                  className="relative z-10 block w-full appearance-none rounded-b-lg border border-[#3a322f] bg-[#26201f] px-4 py-3 text-white placeholder-[#8e8e93] transition focus:z-20 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 sm:text-sm"
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -213,7 +213,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={busy}
-            className="flex w-full justify-center rounded-xl border border-transparent bg-indigo-600 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-[#1c1c1e] disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
+            className="flex w-full justify-center rounded-xl border border-transparent bg-amber-600 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-[#1c1618] disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
           >
             {busy
               ? 'Please wait…'

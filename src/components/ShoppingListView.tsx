@@ -167,7 +167,7 @@ export function ShoppingListView({ items, onChange }: Props) {
       <ShoppingComposer recents={recentNames} onAdd={addItem} />
 
       {showSearch ? (
-        <div className="overflow-hidden rounded-[10px] bg-[#2c2c2e] ring-1 ring-white/[0.08]">
+        <div className="overflow-hidden rounded-[10px] bg-[#26201f] ring-1 ring-white/[0.08]">
           <div className="flex items-center gap-2 px-4">
             <IconSearch className={`h-5 w-5 ${iosSecondary}`} />
             <input
@@ -199,7 +199,7 @@ export function ShoppingListView({ items, onChange }: Props) {
           ) : null}
         </h2>
         {active.length === 0 ? (
-          <div className="rounded-[10px] bg-[#2c2c2e]/80 px-4 py-10 text-center ring-1 ring-white/[0.06]">
+          <div className="rounded-[10px] bg-[#26201f]/80 px-4 py-10 text-center ring-1 ring-white/[0.06]">
             <p className={`text-[15px] ${iosSecondary}`}>
               {query.trim()
                 ? 'No matches'
@@ -217,7 +217,7 @@ export function ShoppingListView({ items, onChange }: Props) {
               strategy={verticalListSortingStrategy}
               disabled={!dragEnabled}
             >
-              <ul className="overflow-hidden rounded-[10px] bg-[#2c2c2e] ring-1 ring-white/[0.08]">
+              <ul className="overflow-hidden rounded-[10px] bg-[#26201f] ring-1 ring-white/[0.08]">
                 {active.map((item, idx) => (
                   <ShoppingRow
                     key={item.id}
@@ -264,13 +264,13 @@ export function ShoppingListView({ items, onChange }: Props) {
         {showCompleted && (
           <>
             {completed.length === 0 ? (
-              <div className="rounded-[10px] bg-[#2c2c2e]/80 px-4 py-8 text-center ring-1 ring-white/[0.06]">
+              <div className="rounded-[10px] bg-[#26201f]/80 px-4 py-8 text-center ring-1 ring-white/[0.06]">
                 <p className={`text-[15px] ${iosSecondary}`}>
                   {query.trim() ? 'No matches' : 'Nothing completed yet'}
                 </p>
               </div>
             ) : (
-              <ul className="overflow-hidden rounded-[10px] bg-[#2c2c2e] ring-1 ring-white/[0.08]">
+              <ul className="overflow-hidden rounded-[10px] bg-[#26201f] ring-1 ring-white/[0.08]">
                 {completed.map((item, idx) => (
                   <li
                     key={item.id}

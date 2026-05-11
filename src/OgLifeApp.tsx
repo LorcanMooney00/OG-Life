@@ -10,6 +10,8 @@ import { TabSwitcher } from './components/TabSwitcher'
 import { useInstallPrompt } from './contexts/InstallPromptContext'
 import { useAuth } from './lib/auth'
 import {
+  anniversaryCountdownLabel,
+  anniversaryEmoji,
   formatClockTime,
   formatLongDate,
   formatNextWhen,
@@ -20,6 +22,7 @@ import {
 } from './lib/date'
 import {
   findNextOccurrence,
+  findUpcomingAnniversaries,
   nextUpcomingOccurrences,
   occurrencesOnDate,
 } from './lib/calendarOccurrences'
@@ -206,6 +209,7 @@ export default function OgLifeApp() {
     )
     const remaining = shopping.filter((i) => !i.purchased)
     const nextOccurrence = findNextOccurrence(dashboardEvents, today, 30)
+    const upcomingAnniversaries = findUpcomingAnniversaries(dashboardEvents, today, 7)
     return {
       today,
       todaysEvents,
@@ -213,11 +217,19 @@ export default function OgLifeApp() {
       remaining,
       purchasedCount: shopping.length - remaining.length,
       nextOccurrence,
+      upcomingAnniversaries,
     }
   }, [dashboardEvents, shopping, now])
 
-  const { today, todaysEvents, upcoming, remaining, purchasedCount, nextOccurrence } =
-    dashboardSummary
+  const {
+    today,
+    todaysEvents,
+    upcoming,
+    remaining,
+    purchasedCount,
+    nextOccurrence,
+    upcomingAnniversaries,
+  } = dashboardSummary
   const shoppingRemaining = remaining.length
   const mood = moodByHour(today.getHours())
   const nextWhen = nextOccurrence
@@ -279,9 +291,9 @@ export default function OgLifeApp() {
   }, [screen])
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-slate-950 text-slate-100">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-stone-950 text-stone-100">
       <header
-        className="shrink-0 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md"
+        className="shrink-0 border-b border-stone-800 bg-stone-950/90 backdrop-blur-md"
         style={{
           paddingTop: 'max(0.75rem, env(safe-area-inset-top))',
           paddingLeft: 'max(1rem, env(safe-area-inset-left))',
@@ -291,7 +303,7 @@ export default function OgLifeApp() {
         <div className="mx-auto max-w-lg pb-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-300/90">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-300/90">
                 OG Life
               </p>
               <h1 className="text-lg font-semibold leading-tight text-white sm:text-xl">
@@ -301,7 +313,7 @@ export default function OgLifeApp() {
                     ? 'Calendar'
                     : 'Shopping list'}
               </h1>
-              <p className="mt-0.5 text-xs text-slate-500">
+              <p className="mt-0.5 text-xs text-stone-500">
                 {screen === 'home'
                   ? 'Your quick dashboard'
                   : 'Synced with your account · swipe-friendly'}
@@ -309,7 +321,7 @@ export default function OgLifeApp() {
             </div>
             <Link
               to="/app/settings"
-              className="shrink-0 rounded-[10px] bg-[#2c2c2e] px-3 py-2 text-xs font-semibold text-[#0a84ff] ring-1 ring-white/[0.08] active:bg-[#3a3a3c]"
+              className="shrink-0 rounded-[10px] bg-[#26201f] px-3 py-2 text-xs font-semibold text-[#0a84ff] ring-1 ring-white/[0.08] active:bg-[#3a322f]"
             >
               Account
             </Link>
@@ -320,14 +332,14 @@ export default function OgLifeApp() {
             </p>
           )}
           {deferred && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-indigo-500/40 bg-indigo-950/50 px-3 py-2.5">
-              <p className="min-w-0 flex-1 text-[13px] text-indigo-100/95">
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-amber-500/40 bg-amber-950/50 px-3 py-2.5">
+              <p className="min-w-0 flex-1 text-[13px] text-amber-100/95">
                 Install OG Life on this phone for a full-screen shortcut.
               </p>
               <button
                 type="button"
                 onClick={() => void promptInstall()}
-                className="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white"
+                className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white"
               >
                 Install
               </button>
@@ -391,20 +403,26 @@ export default function OgLifeApp() {
           {screen === 'home' ? (
             <div className="ios-font space-y-4">
               {/* Hero: time-of-day mood + single focus tile (next event /
-                  shopping nudge / all-clear). Replaces the old stat-tile pair
-                  so the eye lands on the one thing that matters right now. */}
+                  shopping nudge / all-clear). Two stacked gradients give the
+                  card real warmth: a strong diagonal wash from the lead mood
+                  colour into a warm-dark base, and a soft radial highlight in
+                  the top-right that picks up the accent. Surfaces *inside*
+                  the hero use translucent white so they read as lit chips on
+                  the glow, not holes in it. */}
               <section
-                className="relative overflow-hidden rounded-[20px] p-5 ring-1 ring-white/[0.08]"
+                className="relative overflow-hidden rounded-[20px] p-5 ring-1"
                 style={{
-                  background: `linear-gradient(135deg, ${mood.from}44 0%, ${mood.via} 65%, #0a0a0d 100%)`,
+                  background: `radial-gradient(120% 80% at 100% 0%, ${mood.accent}33 0%, transparent 55%), linear-gradient(135deg, ${mood.from}80 0%, ${mood.via}55 45%, ${mood.tint} 100%)`,
+                  boxShadow: `0 18px 50px -25px ${mood.from}80, inset 0 1px 0 rgba(255,255,255,0.06)`,
+                  borderColor: 'transparent',
                 }}
               >
-                {/* Soft accent orb — picks up the mood colour to give the
-                    card a tiny bit of depth without an illustration. */}
+                {/* Brighter accent orb — picks up the mood colour to give
+                    the card a tiny bit of depth without an illustration. */}
                 <div
                   aria-hidden
-                  className="pointer-events-none absolute -right-14 -top-14 h-48 w-48 rounded-full blur-3xl"
-                  style={{ background: mood.from, opacity: 0.22 }}
+                  className="pointer-events-none absolute -right-10 -top-12 h-52 w-52 rounded-full blur-3xl"
+                  style={{ background: mood.from, opacity: 0.35 }}
                 />
 
                 <p
@@ -413,7 +431,7 @@ export default function OgLifeApp() {
                 >
                   {formatLongDate(today)}
                 </p>
-                <h2 className="relative mt-2 text-[26px] font-semibold leading-tight text-white">
+                <h2 className="relative mt-2 text-[26px] font-semibold leading-tight text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">
                   {heroGreeting}
                 </h2>
 
@@ -424,15 +442,18 @@ export default function OgLifeApp() {
                     Loading state shows a soft placeholder so the hero never
                     collapses to a thin line on first paint. */}
                 {!dashboardLoaded || !shoppingLoaded ? (
-                  <div className="relative mt-5 h-[88px] rounded-[14px] bg-white/[0.05] ring-1 ring-white/[0.04]" />
+                  <div className="relative mt-5 h-[88px] rounded-[14px] bg-white/[0.08] ring-1 ring-white/[0.08]" />
                 ) : nextOccurrence && nextWhen ? (
                   <button
                     type="button"
                     onClick={() => setScreen('calendar')}
-                    className="relative mt-5 flex w-full items-center gap-3 rounded-[14px] bg-black/30 px-4 py-3.5 text-left ring-1 ring-white/[0.06] backdrop-blur transition active:bg-black/40"
+                    className="relative mt-5 flex w-full items-center gap-3 rounded-[14px] bg-white/[0.10] px-4 py-3.5 text-left ring-1 ring-white/[0.12] backdrop-blur-md transition active:bg-white/[0.16]"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">
+                      <p
+                        className="text-[10px] font-semibold uppercase tracking-[0.16em]"
+                        style={{ color: mood.accent }}
+                      >
                         Next up
                       </p>
                       <p className="mt-0.5 truncate text-[17px] font-semibold text-white">
@@ -443,21 +464,22 @@ export default function OgLifeApp() {
                           <span
                             className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
                             style={{
-                              background: `${mood.accent}33`,
-                              color: mood.accent,
+                              background: `${mood.accent}40`,
+                              color: '#fff',
+                              boxShadow: `inset 0 0 0 1px ${mood.accent}55`,
                             }}
                           >
                             {nextWhen.countdown}
                           </span>
                         ) : null}
-                        <span className="text-[12px] text-white/60">
+                        <span className="text-[12px] text-white/75">
                           {nextWhen.when}
                         </span>
                       </div>
                     </div>
                     <span
                       aria-hidden
-                      className="flex-shrink-0 text-[20px] leading-none text-white/40"
+                      className="flex-shrink-0 text-[20px] leading-none text-white/55"
                     >
                       →
                     </span>
@@ -466,10 +488,13 @@ export default function OgLifeApp() {
                   <button
                     type="button"
                     onClick={() => setScreen('shopping')}
-                    className="relative mt-5 flex w-full items-center gap-3 rounded-[14px] bg-black/30 px-4 py-3.5 text-left ring-1 ring-white/[0.06] backdrop-blur transition active:bg-black/40"
+                    className="relative mt-5 flex w-full items-center gap-3 rounded-[14px] bg-white/[0.10] px-4 py-3.5 text-left ring-1 ring-white/[0.12] backdrop-blur-md transition active:bg-white/[0.16]"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">
+                      <p
+                        className="text-[10px] font-semibold uppercase tracking-[0.16em]"
+                        style={{ color: mood.accent }}
+                      >
                         On the list
                       </p>
                       <p className="mt-0.5 text-[17px] font-semibold text-white">
@@ -477,35 +502,106 @@ export default function OgLifeApp() {
                           ? '1 item to grab'
                           : `${shoppingRemaining} items to grab`}
                       </p>
-                      <p className="mt-1 text-[12px] text-white/60">
+                      <p className="mt-1 text-[12px] text-white/75">
                         Tap to open the shopping list.
                       </p>
                     </div>
                     <span
                       aria-hidden
-                      className="flex-shrink-0 text-[20px] leading-none text-white/40"
+                      className="flex-shrink-0 text-[20px] leading-none text-white/55"
                     >
                       →
                     </span>
                   </button>
                 ) : (
-                  <div className="relative mt-5 rounded-[14px] bg-black/20 px-4 py-3.5 ring-1 ring-white/[0.06] backdrop-blur">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">
+                  <div className="relative mt-5 rounded-[14px] bg-white/[0.08] px-4 py-3.5 ring-1 ring-white/[0.10] backdrop-blur-md">
+                    <p
+                      className="text-[10px] font-semibold uppercase tracking-[0.16em]"
+                      style={{ color: mood.accent }}
+                    >
                       All clear
                     </p>
                     <p className="mt-0.5 text-[17px] font-semibold text-white">
                       Nothing on the books.
                     </p>
-                    <p className="mt-1 text-[12px] text-white/60">
+                    <p className="mt-1 text-[12px] text-white/75">
                       Enjoy the calm.
                     </p>
                   </div>
                 )}
               </section>
 
+              {/* Anniversary / birthday countdown — shown only when at least
+                  one anniversary occurrence falls within the next 7 days.
+                  Special card so it stands out from the rest of the dashboard;
+                  tap a row to jump to the source event in the calendar. */}
+              {upcomingAnniversaries.length > 0 ? (
+                <section className="relative overflow-hidden rounded-[16px] p-[1px] ring-1 ring-amber-300/20">
+                  {/* Warm amber → rose gradient frame so it visibly belongs
+                      to the "celebration" category without screaming. */}
+                  <div className="rounded-[15px] bg-gradient-to-br from-amber-500/25 via-[#1c1618] to-[#1c1618] p-4 ring-1 ring-white/[0.04]">
+                    <header className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-200/85">
+                          Coming up
+                        </p>
+                        <h3 className="mt-0.5 text-[17px] font-semibold text-white">
+                          {upcomingAnniversaries.length === 1
+                            ? 'An anniversary this week'
+                            : `${upcomingAnniversaries.length} celebrations this week`}
+                        </h3>
+                      </div>
+                    </header>
+                    <ul className="mt-3 space-y-2">
+                      {upcomingAnniversaries.map(({ occurrence, daysUntil, yearsSince }) => (
+                        <li key={occurrence.event.id + '::' + occurrence.ymd}>
+                          <button
+                            type="button"
+                            onClick={() => setScreen('calendar')}
+                            className="flex w-full items-center gap-3 rounded-[12px] bg-white/[0.05] px-3 py-3 text-left ring-1 ring-white/[0.06] transition active:bg-white/[0.10]"
+                          >
+                            <span
+                              aria-hidden
+                              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-[20px] ring-1 ring-amber-300/30"
+                            >
+                              {anniversaryEmoji(occurrence.event.title)}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-[15px] font-semibold text-white">
+                                {occurrence.event.title || 'Anniversary'}
+                              </p>
+                              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px]">
+                                <span className="font-semibold text-amber-200">
+                                  {anniversaryCountdownLabel(daysUntil)}
+                                </span>
+                                {yearsSince > 0 ? (
+                                  <span className="text-white/55">
+                                    · {yearsSince}{' '}
+                                    {yearsSince === 1 ? 'year' : 'years'}
+                                  </span>
+                                ) : null}
+                                <span className="text-white/45">
+                                  · {formatShortDayLabel(occurrence.date)}
+                                </span>
+                              </div>
+                            </div>
+                            <span
+                              aria-hidden
+                              className="flex-shrink-0 text-[18px] leading-none text-white/40"
+                            >
+                              →
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </section>
+              ) : null}
+
               {/* Today’s events — hidden entirely when nothing’s on. */}
               {todaysEvents.length > 0 ? (
-                <section className="rounded-[16px] bg-[#1c1c1e] ring-1 ring-white/[0.08]">
+                <section className="rounded-[16px] bg-[#1c1618] ring-1 ring-white/[0.07]">
                   <header className="flex items-center justify-between px-4 pt-4">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.14em] text-[#8e8e93]">
@@ -518,7 +614,7 @@ export default function OgLifeApp() {
                     <button
                       type="button"
                       onClick={() => setScreen('calendar')}
-                      className="rounded-full bg-indigo-500/15 px-3 py-1 text-[12px] font-medium text-indigo-200 transition active:bg-indigo-500/25"
+                      className="rounded-full bg-amber-500/15 px-3 py-1 text-[12px] font-medium text-amber-200 transition active:bg-amber-500/25"
                     >
                       Open
                     </button>
@@ -530,7 +626,7 @@ export default function OgLifeApp() {
                         className="flex items-start gap-3 px-4 py-3"
                       >
                         <div className="flex w-14 flex-shrink-0 flex-col items-start">
-                          <p className="text-[13px] font-semibold text-indigo-200">
+                          <p className="text-[13px] font-semibold text-amber-200">
                             {formatClockTime(o.event.eventTime) ?? 'All day'}
                           </p>
                         </div>
@@ -552,7 +648,7 @@ export default function OgLifeApp() {
 
               {/* Coming up */}
               {upcoming.length > 0 ? (
-                <section className="rounded-[16px] bg-[#1c1c1e] ring-1 ring-white/[0.08]">
+                <section className="rounded-[16px] bg-[#1c1618] ring-1 ring-white/[0.07]">
                   <header className="flex items-center justify-between px-4 pt-4">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.14em] text-[#8e8e93]">
@@ -595,7 +691,7 @@ export default function OgLifeApp() {
 
               {/* Shopping snapshot — hidden entirely when the cart is empty. */}
               {shoppingRemaining > 0 ? (
-                <section className="rounded-[16px] bg-[#1c1c1e] ring-1 ring-white/[0.08]">
+                <section className="rounded-[16px] bg-[#1c1618] ring-1 ring-white/[0.07]">
                   <header className="flex items-center justify-between px-4 pt-4">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.14em] text-[#8e8e93]">
@@ -608,7 +704,7 @@ export default function OgLifeApp() {
                     <button
                       type="button"
                       onClick={() => setScreen('shopping')}
-                      className="rounded-full bg-indigo-500/15 px-3 py-1 text-[12px] font-medium text-indigo-200 transition active:bg-indigo-500/25"
+                      className="rounded-full bg-amber-500/15 px-3 py-1 text-[12px] font-medium text-amber-200 transition active:bg-amber-500/25"
                     >
                       Open
                     </button>
@@ -621,7 +717,7 @@ export default function OgLifeApp() {
                       >
                         <span
                           aria-hidden
-                          className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-indigo-400/80"
+                          className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-amber-400/80"
                         />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[15px] text-white">{item.name}</p>
@@ -637,7 +733,7 @@ export default function OgLifeApp() {
                       <button
                         type="button"
                         onClick={() => setScreen('shopping')}
-                        className="w-full px-4 py-3 text-left text-[13px] font-medium text-indigo-300 active:bg-white/[0.04]"
+                        className="w-full px-4 py-3 text-left text-[13px] font-medium text-amber-300 active:bg-white/[0.04]"
                       >
                         +{shoppingRemaining - 5} more
                       </button>
@@ -667,7 +763,7 @@ export default function OgLifeApp() {
       </main>
 
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-800 bg-slate-950/95 backdrop-blur-lg"
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-stone-800 bg-stone-950/95 backdrop-blur-lg"
         style={{
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           paddingLeft: 'env(safe-area-inset-left, 0px)',
@@ -678,8 +774,8 @@ export default function OgLifeApp() {
           <button
             type="button"
             onClick={() => setScreen('calendar')}
-            className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium transition active:bg-slate-900/80 ${
-              screen === 'calendar' ? 'text-indigo-300' : 'text-slate-500'
+            className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium transition active:bg-stone-900/80 ${
+              screen === 'calendar' ? 'text-amber-300' : 'text-stone-500'
             }`}
           >
             <span className="text-lg leading-none" aria-hidden>
@@ -690,8 +786,8 @@ export default function OgLifeApp() {
           <button
             type="button"
             onClick={() => setScreen('home')}
-            className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium transition active:bg-slate-900/80 ${
-              screen === 'home' ? 'text-indigo-300' : 'text-slate-500'
+            className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium transition active:bg-stone-900/80 ${
+              screen === 'home' ? 'text-amber-300' : 'text-stone-500'
             }`}
           >
             <span className="text-lg leading-none" aria-hidden>
@@ -702,8 +798,8 @@ export default function OgLifeApp() {
           <button
             type="button"
             onClick={() => setScreen('shopping')}
-            className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium transition active:bg-slate-900/80 ${
-              screen === 'shopping' ? 'text-indigo-300' : 'text-slate-500'
+            className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium transition active:bg-stone-900/80 ${
+              screen === 'shopping' ? 'text-amber-300' : 'text-stone-500'
             }`}
           >
             <span className="text-lg leading-none" aria-hidden>

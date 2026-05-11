@@ -2,11 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CalendarEvent, ShoppingItem } from '../types'
 import { toYmd } from './date'
 
-const CAL_SELECT =
-  'id,created_by,title,notes,event_date,event_time,recurrence,recurrence_end_date,created_at'
-
-// `*` keeps the SELECT working when the (optional) `sort_order` column hasn’t
-// been added yet on the Supabase project — the row mapper reads it defensively.
+// `*` keeps the SELECT working when (optional) columns haven’t been added to
+// the Supabase project yet — the row mapper reads them defensively. Applies
+// to both calendar (`is_anniversary`) and shopping (`sort_order`).
+const CAL_SELECT = '*'
 const SHOP_SELECT = '*'
 
 /**
@@ -19,13 +18,32 @@ const SHOP_SELECT = '*'
  *             flip the flag if it sees the “column does not exist” error.
  */
 let sortOrderSupported: boolean | null = null
+/**
+ * Same lazy-detect pattern for the `is_anniversary` column on calendar_events.
+ * Flipped to false on the first persist that errors with “column does not
+ * exist”, after which we strip it from subsequent inserts/updates. (Reads
+ * already use `r.is_anniversary ?? false` so SELECTs degrade silently.)
+ */
+let anniversarySupported: boolean | null = null
 
 /** Postgres SQLSTATE 42703 = `undefined_column`. PostgREST also surfaces this
  * inside `error.message`. */
-function isMissingSortOrderError(err: { code?: string; message?: string } | null): boolean {
+function isMissingColumnError(
+  err: { code?: string; message?: string } | null,
+  column: string,
+): boolean {
   if (!err) return false
   if (err.code === '42703') return true
-  return /sort_order/.test(err.message ?? '') && /does not exist|could not find/i.test(err.message ?? '')
+  return (
+    new RegExp(column).test(err.message ?? '') &&
+    /does not exist|could not find/i.test(err.message ?? '')
+  )
+}
+function isMissingSortOrderError(err: { code?: string; message?: string } | null) {
+  return isMissingColumnError(err, 'sort_order')
+}
+function isMissingAnniversaryError(err: { code?: string; message?: string } | null) {
+  return isMissingColumnError(err, 'is_anniversary')
 }
 
 type CalendarRow = {
@@ -37,6 +55,8 @@ type CalendarRow = {
   event_time: string | null
   recurrence: CalendarEvent['recurrence']
   recurrence_end_date: string | null
+  /** Optional — present once the user has run migration_yearly_and_anniversary.sql. */
+  is_anniversary?: boolean | null
   created_at: string
 }
 
@@ -59,6 +79,7 @@ export function rowToEvent(r: CalendarRow): CalendarEvent {
     eventTime: r.event_time,
     recurrence: r.recurrence,
     recurrenceEndDate: r.recurrence_end_date,
+    isAnniversary: Boolean(r.is_anniversary),
     createdAt: r.created_at,
   }
 }
@@ -160,7 +181,7 @@ export async function fetchShoppingItems(
 }
 
 function eventPayload(e: CalendarEvent, userId: string) {
-  return {
+  const base = {
     id: e.id,
     created_by: userId,
     title: e.title,
@@ -170,6 +191,11 @@ function eventPayload(e: CalendarEvent, userId: string) {
     recurrence: e.recurrence,
     recurrence_end_date: e.recurrenceEndDate,
   }
+  // Only attach is_anniversary when the column is known to exist; otherwise
+  // PostgREST rejects the whole row with a 400.
+  return anniversarySupported === false
+    ? base
+    : { ...base, is_anniversary: e.isAnniversary }
 }
 
 function shoppingPayload(i: ShoppingItem, userId: string) {
@@ -194,7 +220,8 @@ function sameEvent(a: CalendarEvent, b: CalendarEvent) {
     a.eventDate === b.eventDate &&
     a.eventTime === b.eventTime &&
     a.recurrence === b.recurrence &&
-    a.recurrenceEndDate === b.recurrenceEndDate
+    a.recurrenceEndDate === b.recurrenceEndDate &&
+    a.isAnniversary === b.isAnniversary
   )
 }
 
@@ -227,23 +254,47 @@ export async function persistCalendarChange(
       const { error } = await client
         .from('calendar_events')
         .insert(eventPayload(e, userId))
-      if (error) console.error('calendar insert', error)
+      if (error && isMissingAnniversaryError(error)) {
+        // Mirror the sort_order fallback: strip the new column and retry once,
+        // then remember the column is missing so we stop sending it.
+        anniversarySupported = false
+        const retry = await client
+          .from('calendar_events')
+          .insert(eventPayload(e, userId))
+        if (retry.error) console.error('calendar insert', retry.error)
+      } else if (error) {
+        console.error('calendar insert', error)
+      }
       continue
     }
     const p = prevMap.get(e.id)!
     if (!sameEvent(p, e)) {
+      const updatePayload: Record<string, unknown> = {
+        title: e.title,
+        notes: e.notes,
+        event_date: e.eventDate,
+        event_time: e.eventTime,
+        recurrence: e.recurrence,
+        recurrence_end_date: e.recurrenceEndDate,
+      }
+      if (anniversarySupported !== false) {
+        updatePayload.is_anniversary = e.isAnniversary
+      }
       const { error } = await client
         .from('calendar_events')
-        .update({
-          title: e.title,
-          notes: e.notes,
-          event_date: e.eventDate,
-          event_time: e.eventTime,
-          recurrence: e.recurrence,
-          recurrence_end_date: e.recurrenceEndDate,
-        })
+        .update(updatePayload)
         .eq('id', e.id)
-      if (error) console.error('calendar update', error)
+      if (error && isMissingAnniversaryError(error)) {
+        anniversarySupported = false
+        delete updatePayload.is_anniversary
+        const retry = await client
+          .from('calendar_events')
+          .update(updatePayload)
+          .eq('id', e.id)
+        if (retry.error) console.error('calendar update', retry.error)
+      } else if (error) {
+        console.error('calendar update', error)
+      }
     }
   }
 }

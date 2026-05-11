@@ -54,6 +54,14 @@ export function expandEventInRange(
       const maxDay = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate()
       nextMonth.setDate(Math.min(targetDay, maxDay))
       cursor.setTime(nextMonth.getTime())
+    } else if (event.recurrence === 'yearly') {
+      // Step the cursor exactly one year. Feb 29 falls back to Feb 28 in
+      // non-leap years so the series doesn't silently skip a year.
+      const targetMonth = start.getMonth()
+      const targetDay = start.getDate()
+      const nextYear = cursor.getFullYear() + 1
+      const maxDay = new Date(nextYear, targetMonth + 1, 0).getDate()
+      cursor.setFullYear(nextYear, targetMonth, Math.min(targetDay, maxDay))
     } else {
       break
     }
@@ -100,6 +108,45 @@ export function nextUpcomingOccurrences(
   const end = endOfDay(addDays(start, lookaheadDays))
   const all = collectOccurrencesInRange(events, start, end)
   return all.slice(0, limit)
+}
+
+/**
+ * Anniversaries (events with `isAnniversary === true`) whose next occurrence
+ * falls within `withinDays`. Returns each as an `AnniversaryUpcoming` carrying
+ * the upcoming occurrence + the integer number of years since the original
+ * event date (so a wedding from 2020 shows "5 years" on its 2025 anniversary).
+ * Sorted soonest-first.
+ */
+export type AnniversaryUpcoming = {
+  occurrence: EventOccurrence
+  /** Days until the upcoming occurrence (0 = today). */
+  daysUntil: number
+  /** Integer years since the original `event.eventDate`. 0 if same year. */
+  yearsSince: number
+}
+
+export function findUpcomingAnniversaries(
+  events: CalendarEvent[],
+  now: Date,
+  withinDays = 7,
+): AnniversaryUpcoming[] {
+  const start = startOfDay(now)
+  const end = endOfDay(addDays(start, withinDays))
+  // Only expand anniversary events to keep this cheap; recurrence handling
+  // means non-yearly anniversaries (e.g. a one-off "first date") still surface.
+  const flagged = events.filter((e) => e.isAnniversary)
+  if (flagged.length === 0) return []
+  const all = collectOccurrencesInRange(flagged, start, end)
+  const out: AnniversaryUpcoming[] = []
+  for (const o of all) {
+    const occDay = startOfDay(o.date)
+    const daysUntil = Math.round((occDay.getTime() - start.getTime()) / 86_400_000)
+    if (daysUntil < 0 || daysUntil > withinDays) continue
+    const origin = parseYmd(o.event.eventDate)
+    const yearsSince = Math.max(0, occDay.getFullYear() - origin.getFullYear())
+    out.push({ occurrence: o, daysUntil, yearsSince })
+  }
+  return out.sort((a, b) => a.daysUntil - b.daysUntil)
 }
 
 /**

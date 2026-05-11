@@ -8,12 +8,12 @@ export function RequireAuth() {
 
   if (!isSupabaseConfigured) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-slate-950 px-4 text-center text-slate-200">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-stone-950 px-4 text-center text-stone-200">
         <p className="text-lg font-semibold">Supabase is not configured</p>
-        <p className="mt-2 max-w-sm text-sm text-slate-400">
-          Add <code className="text-indigo-300">VITE_SUPABASE_URL</code> and{' '}
-          <code className="text-indigo-300">VITE_SUPABASE_ANON_KEY</code> to your{' '}
-          <code className="text-indigo-300">.env</code> file, then restart the dev server.
+        <p className="mt-2 max-w-sm text-sm text-stone-400">
+          Add <code className="text-amber-300">VITE_SUPABASE_URL</code> and{' '}
+          <code className="text-amber-300">VITE_SUPABASE_ANON_KEY</code> to your{' '}
+          <code className="text-amber-300">.env</code> file, then restart the dev server.
         </p>
       </div>
     )
@@ -21,7 +21,7 @@ export function RequireAuth() {
 
   if (loading) {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center bg-slate-950 text-slate-400">
+      <div className="flex min-h-0 flex-1 items-center justify-center bg-stone-950 text-stone-400">
         Loading…
       </div>
     )

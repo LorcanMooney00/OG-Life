@@ -40,7 +40,7 @@ export function ShoppingEditSheet({ item, onClose, onSave, onDelete }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 sm:items-center sm:p-4">
       <div
-        className="ios-font w-full max-w-md overflow-y-auto rounded-t-[12px] bg-[#1c1c1e] shadow-2xl sm:rounded-[12px]"
+        className="ios-font w-full max-w-md overflow-y-auto rounded-t-[12px] bg-[#1c1618] shadow-2xl sm:rounded-[12px]"
         style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
         role="dialog"
         aria-modal="true"
@@ -72,7 +72,7 @@ export function ShoppingEditSheet({ item, onClose, onSave, onDelete }: Props) {
         </div>
 
         <div className="space-y-4 p-4">
-          <div className="overflow-hidden rounded-[10px] bg-[#2c2c2e] ring-1 ring-white/[0.06]">
+          <div className="overflow-hidden rounded-[10px] bg-[#26201f] ring-1 ring-white/[0.06]">
             <label className="block border-b border-white/[0.08] px-4 py-2">
               <span className="sr-only">Name</span>
               <input
@@ -97,7 +97,7 @@ export function ShoppingEditSheet({ item, onClose, onSave, onDelete }: Props) {
           <button
             type="button"
             onClick={onDelete}
-            className="w-full rounded-[10px] bg-[#2c2c2e] py-3 text-center text-[17px] font-semibold text-[#ff453a] ring-1 ring-white/[0.06] active:bg-[#3a3a3c]"
+            className="w-full rounded-[10px] bg-[#26201f] py-3 text-center text-[17px] font-semibold text-[#ff453a] ring-1 ring-white/[0.06] active:bg-[#3a322f]"
           >
             Delete Item
           </button>

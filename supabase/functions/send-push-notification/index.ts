@@ -41,7 +41,15 @@ serve(async (req) => {
       event_date,
       event_time,
       reminder,
+      // Reminder variant — '30min' (default for legacy reminder=true),
+      // 'day_before' for biweekly day-before, 'week_before' for yearly
+      // week-before. Sent from the Postgres reminder fns.
+      reminder_kind: reminderKind,
+      // Marks anniversaries / birthdays so we can sprinkle an emoji and use
+      // celebratory copy instead of the generic event template.
+      is_anniversary: isAnniversaryRaw,
     } = body
+    const isAnniversary = isAnniversaryRaw === true
 
     if (!user_id) {
       return new Response(JSON.stringify({ error: 'Missing user_id' }), {
@@ -72,32 +80,80 @@ serve(async (req) => {
         path = '/app?screen=shopping'
         break
       case 'event': {
-        const isReminder = reminder === true
-        heading = isReminder ? 'Event starting soon' : 'New calendar event'
-        if (isReminder) {
-          const timeStr =
-            event_time && typeof event_time === 'string'
-              ? (() => {
-                  try {
-                    return new Date(`2000-01-01T${event_time}`).toLocaleTimeString('en-US', {
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12: true,
-                    })
-                  } catch {
-                    return event_time
-                  }
-                })()
-              : ''
-          content = title
-            ? `${title} starts in 30 minutes${timeStr ? ` (${timeStr})` : ''}`
+        // Determine reminder variant: explicit reminder_kind wins; otherwise
+        // legacy reminder=true means 30-minute reminder; otherwise it's a
+        // "new event added" notification.
+        const kind: 'new' | '30min' | 'day_before' | 'week_before' =
+          reminderKind === 'day_before' ||
+          reminderKind === 'week_before' ||
+          reminderKind === '30min'
+            ? reminderKind
+            : reminder === true
+              ? '30min'
+              : 'new'
+
+        const safeTitle = typeof title === 'string' ? title : ''
+        const formatClock = (raw: unknown): string => {
+          if (!raw || typeof raw !== 'string') return ''
+          try {
+            return new Date(`2000-01-01T${raw}`).toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+            })
+          } catch {
+            return raw
+          }
+        }
+        const formatDay = (raw: unknown): string => {
+          if (!raw) return ''
+          try {
+            return new Date(String(raw)).toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'short',
+              day: 'numeric',
+            })
+          } catch {
+            return ''
+          }
+        }
+        // Anniversary heuristic mirrors the client: cake for birthdays,
+        // confetti for anything else flagged as an anniversary.
+        const emoji = isAnniversary
+          ? /birthday|bday|b-day/i.test(safeTitle)
+            ? '🎂'
+            : '🎉'
+          : ''
+        const titleWithEmoji = emoji ? `${emoji} ${safeTitle}` : safeTitle
+        const timeStr = formatClock(event_time)
+
+        if (kind === '30min') {
+          heading = isAnniversary ? `${emoji} Starting soon` : 'Event starting soon'
+          content = safeTitle
+            ? `${titleWithEmoji} starts in 30 minutes${timeStr ? ` (${timeStr})` : ''}`
             : 'A calendar event starts in 30 minutes'
+        } else if (kind === 'day_before') {
+          heading = isAnniversary ? `${emoji} Tomorrow` : 'Tomorrow on your calendar'
+          content = safeTitle
+            ? `${titleWithEmoji}${timeStr ? ` · tomorrow at ${timeStr}` : ' · tomorrow'}`
+            : 'You have an event tomorrow.'
+        } else if (kind === 'week_before') {
+          const dayStr = formatDay(event_date)
+          heading = isAnniversary ? `${emoji} One week to go` : 'Coming up next week'
+          content = safeTitle
+            ? `${titleWithEmoji}${dayStr ? ` · ${dayStr}` : ' · next week'}`
+            : 'You have an event coming up next week.'
         } else {
+          // Brand-new event (created or edited)
+          heading = isAnniversary ? `${emoji} New anniversary` : 'New calendar event'
           const dateStr = event_date
-            ? new Date(String(event_date)).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            ? new Date(String(event_date)).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+              })
             : ''
-          content = title
-            ? `${title}${dateStr ? ` on ${dateStr}` : ''}${event_time ? ` at ${event_time}` : ''}`
+          content = safeTitle
+            ? `${titleWithEmoji}${dateStr ? ` on ${dateStr}` : ''}${event_time ? ` at ${event_time}` : ''}`
             : 'New event on your calendar'
         }
         path = '/app?screen=calendar'

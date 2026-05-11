@@ -16,9 +16,9 @@ export function ShoppingSkeleton() {
         <div className="h-9 w-16 rounded-full bg-white/[0.06]" />
         <div className="h-9 w-16 rounded-full bg-white/[0.06]" />
       </div>
-      <div className="h-11 rounded-[10px] bg-[#2c2c2e]/60 ring-1 ring-white/[0.08]" />
+      <div className="h-11 rounded-[10px] bg-[#26201f]/60 ring-1 ring-white/[0.08]" />
       <Bar className="h-3 w-20" />
-      <div className="overflow-hidden rounded-[10px] bg-[#2c2c2e] ring-1 ring-white/[0.08]">
+      <div className="overflow-hidden rounded-[10px] bg-[#26201f] ring-1 ring-white/[0.08]">
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
@@ -56,7 +56,7 @@ export function CalendarSkeleton() {
         ))}
       </div>
       <Bar className="h-3 w-24" />
-      <div className="overflow-hidden rounded-[10px] bg-[#2c2c2e] ring-1 ring-white/[0.08]">
+      <div className="overflow-hidden rounded-[10px] bg-[#26201f] ring-1 ring-white/[0.08]">
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}

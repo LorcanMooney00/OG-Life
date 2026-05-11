@@ -213,7 +213,7 @@ export function TabSwitcher({
         className="mx-auto flex w-full max-w-2xl items-center justify-between px-5 pb-3"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-indigo-200/80">
+        <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-amber-200/80">
           Switch tab
         </p>
         <button
@@ -284,7 +284,7 @@ export function TabSwitcher({
                   // glides on/off as the user scrolls past each card.
                   className={`relative flex h-[min(72vh,560px)] w-[min(78vw,300px)] flex-col overflow-hidden rounded-[24px] text-left ring-1 transition-[box-shadow,filter] duration-200 active:brightness-90 ${
                     isFocused
-                      ? 'shadow-[0_24px_60px_rgba(79,70,229,0.35)] ring-indigo-300/50'
+                      ? 'shadow-[0_24px_60px_rgba(245,158,11,0.35)] ring-amber-300/50'
                       : 'shadow-[0_18px_40px_rgba(0,0,0,0.45)] ring-white/[0.1]'
                   }`}
                 >
@@ -303,7 +303,7 @@ export function TabSwitcher({
                     <ShoppingPreview items={shoppingItems} />
                   )}
                   {isCurrent ? (
-                    <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-indigo-400/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-100 ring-1 ring-indigo-300/40 backdrop-blur">
+                    <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-amber-400/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-100 ring-1 ring-amber-300/40 backdrop-blur">
                       Open
                     </span>
                   ) : null}
@@ -339,18 +339,18 @@ function PreviewChrome({
   title: string
   subtitle?: string
   children: React.ReactNode
-  tone?: 'plain' | 'indigo'
+  tone?: 'plain' | 'warm'
 }) {
   return (
     <div
       className={`flex h-full flex-col ${
-        tone === 'indigo'
-          ? 'bg-gradient-to-br from-indigo-500/35 via-[#101013] to-[#0c0c10]'
-          : 'bg-gradient-to-br from-[#1c1c1e] via-[#141416] to-[#0c0c10]'
+        tone === 'warm'
+          ? 'bg-gradient-to-br from-amber-500/35 via-[#1c1410] to-[#100c0d]'
+          : 'bg-gradient-to-br from-[#1c1618] via-[#161214] to-[#100c0d]'
       }`}
     >
       <header className="border-b border-white/[0.06] px-4 pb-3 pt-4">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-indigo-200/70">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-amber-200/70">
           OG Life · {eyebrow}
         </p>
         <h3 className="mt-1 text-[17px] font-semibold leading-tight text-white">
@@ -383,8 +383,8 @@ function HomePreview({
   return (
     <PreviewChrome eyebrow="HOME" title="Home" subtitle="Your quick dashboard">
       <div className="space-y-3">
-        <div className="relative overflow-hidden rounded-[12px] bg-gradient-to-br from-indigo-500/25 via-[#1c1c1e] to-[#1c1c1e] p-3 ring-1 ring-white/[0.08]">
-          <p className="text-[8px] font-semibold uppercase tracking-[0.16em] text-indigo-200/80">
+        <div className="relative overflow-hidden rounded-[12px] bg-gradient-to-br from-amber-500/25 via-[#1c1618] to-[#1c1618] p-3 ring-1 ring-white/[0.08]">
+          <p className="text-[8px] font-semibold uppercase tracking-[0.16em] text-amber-200/80">
             {formatLongDate(today)}
           </p>
           <p className="mt-0.5 truncate text-[13px] font-semibold text-white">
@@ -416,7 +416,7 @@ function HomePreview({
         </div>
 
         {todaysEvents.length > 0 ? (
-          <div className="rounded-[12px] bg-[#1c1c1e] p-3 ring-1 ring-white/[0.08]">
+          <div className="rounded-[12px] bg-[#1c1618] p-3 ring-1 ring-white/[0.08]">
             <p className="text-[8px] uppercase tracking-[0.14em] text-white/55">
               Today
             </p>
@@ -426,7 +426,7 @@ function HomePreview({
                   key={o.event.id + '::today'}
                   className="flex items-center gap-2"
                 >
-                  <span className="w-9 flex-shrink-0 text-[10px] font-semibold text-indigo-200">
+                  <span className="w-9 flex-shrink-0 text-[10px] font-semibold text-amber-200">
                     {formatClockTime(o.event.eventTime) ?? 'Day'}
                   </span>
                   <span className="truncate text-[11px] text-white">
@@ -437,7 +437,7 @@ function HomePreview({
             </ul>
           </div>
         ) : upcomingEvents.length > 0 ? (
-          <div className="rounded-[12px] bg-[#1c1c1e] p-3 ring-1 ring-white/[0.08]">
+          <div className="rounded-[12px] bg-[#1c1618] p-3 ring-1 ring-white/[0.08]">
             <p className="text-[8px] uppercase tracking-[0.14em] text-white/55">
               Coming up
             </p>
@@ -509,7 +509,7 @@ function CalendarPreview({
       eyebrow="CALENDAR"
       title="Calendar"
       subtitle={monthName}
-      tone="indigo"
+      tone="warm"
     >
       <div className="grid grid-cols-7 gap-[3px] text-center">
         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
@@ -530,7 +530,7 @@ function CalendarPreview({
                 c.day == null
                   ? 'text-transparent'
                   : isToday
-                    ? 'bg-indigo-500 font-semibold text-white'
+                    ? 'bg-amber-500 font-semibold text-white'
                     : 'text-white/80'
               }`}
             >
@@ -538,7 +538,7 @@ function CalendarPreview({
               {isBusy && !isToday ? (
                 <span
                   aria-hidden
-                  className="absolute bottom-[2px] h-[3px] w-[3px] rounded-full bg-indigo-300"
+                  className="absolute bottom-[2px] h-[3px] w-[3px] rounded-full bg-amber-300"
                 />
               ) : null}
             </div>
@@ -556,7 +556,7 @@ function CalendarPreview({
           <ul className="mt-1 space-y-1">
             {todaysOcc.slice(0, 2).map((o) => (
               <li key={o.event.id + '::cp'} className="flex items-center gap-2">
-                <span className="w-9 flex-shrink-0 text-[10px] font-semibold text-indigo-200">
+                <span className="w-9 flex-shrink-0 text-[10px] font-semibold text-amber-200">
                   {formatClockTime(o.event.eventTime) ?? 'Day'}
                 </span>
                 <span className="truncate text-[11px] text-white">
@@ -596,7 +596,7 @@ function ShoppingPreview({ items }: { items: ShoppingItem[] }) {
       ) : (
         <div className="space-y-2">
           {previewActive.length > 0 ? (
-            <div className="overflow-hidden rounded-[10px] bg-[#1c1c1e] ring-1 ring-white/[0.08]">
+            <div className="overflow-hidden rounded-[10px] bg-[#1c1618] ring-1 ring-white/[0.08]">
               {previewActive.map((item, idx) => (
                 <div
                   key={item.id}
@@ -616,7 +616,7 @@ function ShoppingPreview({ items }: { items: ShoppingItem[] }) {
                 </div>
               ))}
               {active.length > previewActive.length ? (
-                <div className="border-t border-white/[0.06] px-2.5 py-1.5 text-[10px] text-indigo-300/90">
+                <div className="border-t border-white/[0.06] px-2.5 py-1.5 text-[10px] text-amber-300/90">
                   +{active.length - previewActive.length} more
                 </div>
               ) : null}
@@ -624,7 +624,7 @@ function ShoppingPreview({ items }: { items: ShoppingItem[] }) {
           ) : null}
 
           {previewDone.length > 0 ? (
-            <div className="overflow-hidden rounded-[10px] bg-[#1c1c1e]/70 ring-1 ring-white/[0.06]">
+            <div className="overflow-hidden rounded-[10px] bg-[#1c1618]/70 ring-1 ring-white/[0.06]">
               {previewDone.map((item, idx) => (
                 <div
                   key={item.id}

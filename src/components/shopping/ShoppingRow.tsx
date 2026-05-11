@@ -42,7 +42,7 @@ export function ShoppingRow({
     boxShadow: isDragging
       ? '0 16px 32px rgba(0,0,0,0.45), 0 4px 12px rgba(0,0,0,0.35)'
       : undefined,
-    backgroundColor: isDragging ? '#2c2c2e' : undefined,
+    backgroundColor: isDragging ? '#26201f' : undefined,
     borderRadius: isDragging ? 10 : undefined,
   }
 

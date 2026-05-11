@@ -94,28 +94,28 @@ export type DashboardMood = {
 }
 
 const MOOD_MORNING: DashboardMood = {
-  gradient: 'bg-gradient-to-br from-amber-500/25 via-[#1c1c1e] to-[#1c1c1e]',
+  gradient: 'bg-gradient-to-br from-amber-500/25 via-[#1c1618] to-[#1c1618]',
   glow: 'bg-amber-400/20',
   eyebrowText: 'text-amber-200/85',
   accentText: 'text-amber-200',
 }
 const MOOD_DAY: DashboardMood = {
-  gradient: 'bg-gradient-to-br from-sky-500/25 via-[#1c1c1e] to-[#1c1c1e]',
+  gradient: 'bg-gradient-to-br from-sky-500/25 via-[#1c1618] to-[#1c1618]',
   glow: 'bg-sky-400/20',
   eyebrowText: 'text-sky-200/85',
   accentText: 'text-sky-200',
 }
 const MOOD_EVENING: DashboardMood = {
-  gradient: 'bg-gradient-to-br from-fuchsia-500/30 via-[#1c1c1e] to-[#1c1c1e]',
+  gradient: 'bg-gradient-to-br from-fuchsia-500/30 via-[#1c1618] to-[#1c1618]',
   glow: 'bg-fuchsia-400/20',
   eyebrowText: 'text-fuchsia-200/85',
   accentText: 'text-fuchsia-200',
 }
 const MOOD_NIGHT: DashboardMood = {
-  gradient: 'bg-gradient-to-br from-indigo-700/35 via-[#1c1c1e] to-[#1c1c1e]',
-  glow: 'bg-indigo-400/20',
-  eyebrowText: 'text-indigo-200/85',
-  accentText: 'text-indigo-200',
+  gradient: 'bg-gradient-to-br from-amber-700/35 via-[#1c1618] to-[#1c1618]',
+  glow: 'bg-amber-400/20',
+  eyebrowText: 'text-amber-200/85',
+  accentText: 'text-amber-200',
 }
 
 /**

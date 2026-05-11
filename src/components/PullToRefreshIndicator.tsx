@@ -40,7 +40,7 @@ export function PullToRefreshIndicator({ pullY, refreshing, pulling }: Props) {
       }}
     >
       <div
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1c1c1e] text-indigo-300 ring-1 ring-white/[0.08] shadow-lg"
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1c1618] text-amber-300 ring-1 ring-white/[0.08] shadow-lg"
         style={{
           transform: `rotate(${rotate}deg)`,
           transition: pulling || refreshing ? 'none' : 'transform 220ms cubic-bezier(0.2,0.7,0.2,1)',

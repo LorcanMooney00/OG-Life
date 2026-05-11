@@ -60,7 +60,7 @@ export default function ResetPasswordPage() {
 
   if (!isSupabaseConfigured) {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center bg-slate-950 px-4 text-slate-400">
+      <div className="flex min-h-0 flex-1 items-center justify-center bg-stone-950 px-4 text-stone-400">
         Supabase is not configured.
       </div>
     )
@@ -68,7 +68,7 @@ export default function ResetPasswordPage() {
 
   if (isValidSession === null) {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center bg-slate-950 text-slate-400">
+      <div className="flex min-h-0 flex-1 items-center justify-center bg-stone-950 text-stone-400">
         Loading…
       </div>
     )
@@ -77,13 +77,13 @@ export default function ResetPasswordPage() {
   if (isValidSession === false) {
     return (
       <div
-        className="flex min-h-0 flex-1 items-center justify-center bg-slate-950 px-4"
+        className="flex min-h-0 flex-1 items-center justify-center bg-stone-950 px-4"
         style={{
           paddingTop: 'max(1rem, env(safe-area-inset-top))',
           paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
         }}
       >
-        <div className="w-full max-w-md space-y-6 rounded-2xl border border-white/[0.08] bg-[#1c1c1e] p-8">
+        <div className="w-full max-w-md space-y-6 rounded-2xl border border-white/[0.08] bg-[#1c1618] p-8">
           <h2 className="text-center text-xl font-bold text-white">Invalid reset link</h2>
           <p className="text-center text-sm text-[#8e8e93]">
             This link may have expired. Request a new one from the login screen.
@@ -96,7 +96,7 @@ export default function ResetPasswordPage() {
           <button
             type="button"
             onClick={() => navigate('/login')}
-            className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white hover:bg-indigo-500"
+            className="w-full rounded-xl bg-amber-600 py-3 text-sm font-semibold text-white hover:bg-amber-500"
           >
             Back to sign in
           </button>
@@ -107,13 +107,13 @@ export default function ResetPasswordPage() {
 
   return (
     <div
-      className="flex min-h-0 flex-1 items-center justify-center bg-slate-950 px-4"
+      className="flex min-h-0 flex-1 items-center justify-center bg-stone-950 px-4"
       style={{
         paddingTop: 'max(1rem, env(safe-area-inset-top))',
         paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
       }}
     >
-      <div className="w-full max-w-md space-y-8 rounded-2xl border border-white/[0.08] bg-[#1c1c1e] p-8">
+      <div className="w-full max-w-md space-y-8 rounded-2xl border border-white/[0.08] bg-[#1c1618] p-8">
         <div>
           <h2 className="text-center text-xl font-bold text-white">Choose a new password</h2>
           <p className="mt-2 text-center text-sm text-[#8e8e93]">
@@ -132,7 +132,7 @@ export default function ResetPasswordPage() {
               type="password"
               autoComplete="new-password"
               required
-              className="block w-full rounded-t-lg border border-[#3a3a3c] bg-[#2c2c2e] px-4 py-3 text-white placeholder-[#8e8e93] focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm"
+              className="block w-full rounded-t-lg border border-[#3a322f] bg-[#26201f] px-4 py-3 text-white placeholder-[#8e8e93] focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 sm:text-sm"
               placeholder="New password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
@@ -142,7 +142,7 @@ export default function ResetPasswordPage() {
               type="password"
               autoComplete="new-password"
               required
-              className="block w-full rounded-b-lg border border-[#3a3a3c] bg-[#2c2c2e] px-4 py-3 text-white placeholder-[#8e8e93] focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm"
+              className="block w-full rounded-b-lg border border-[#3a322f] bg-[#26201f] px-4 py-3 text-white placeholder-[#8e8e93] focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 sm:text-sm"
               placeholder="Confirm password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
@@ -151,7 +151,7 @@ export default function ResetPasswordPage() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+            className="w-full rounded-xl bg-amber-600 py-3 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
           >
             {busy ? 'Updating…' : 'Update password'}
           </button>

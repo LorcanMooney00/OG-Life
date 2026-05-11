@@ -44,7 +44,7 @@ export function ShoppingComposer({ recents, onAdd }: Props) {
   }
 
   return (
-    <div className="overflow-hidden rounded-[10px] bg-[#2c2c2e] ring-1 ring-white/[0.08]">
+    <div className="overflow-hidden rounded-[10px] bg-[#26201f] ring-1 ring-white/[0.08]">
       <form
         onSubmit={(e) => {
           e.preventDefault()

@@ -78,34 +78,89 @@ export function formatClockTime(time: string | null): string | null {
 }
 
 /**
- * Time-of-day “mood” colours used by the Home hero. We bias toward warm tones
- * around sunrise/golden hour and cool ones midday/late-night so the app picks
- * up a hint of the time you’re actually opening it. Returned hex strings get
- * composed into a translucent gradient over the dark base.
+ * Time-of-day “mood” colours used by the Home hero. We keep everything in the
+ * warm spectrum (peach / amber / coral / rose) so the app reads as a glowy
+ * dark theme rather than a cold one — even at midday and late at night. The
+ * hex strings get composed into a translucent gradient layered over a warm
+ * dark base (`tint` is that base — slightly brown rather than slate).
  */
 export type DayMood = {
   /** Lead colour of the gradient (top-left). */
   from: string
-  /** Secondary colour, blends to the dark base. */
+  /** Secondary colour, sits in the middle of the gradient. */
   via: string
-  /** Accent colour for chips / eyebrow text. */
+  /** Dark warm base the gradient finally settles to. */
+  tint: string
+  /** Accent colour for chips / eyebrow text — should pop on the dark base. */
   accent: string
-  /** Short label, e.g. ‘evening’ — used as a subtle eyebrow if we want it. */
+  /** Short label, e.g. ‘evening’. Not currently rendered but handy for debug. */
   label: string
+}
+
+/**
+ * Heuristic emoji for an anniversary / birthday event. Birthdays get the
+ * cake, everything else the confetti popper. Same heuristic is used on the
+ * Home countdown card and inside the calendar list so the two stay in sync.
+ */
+export function anniversaryEmoji(title: string): string {
+  return /birthday|bday|b-day/i.test(title) ? '🎂' : '🎉'
+}
+
+/** Friendly countdown for an anniversary that's `days` away from today. */
+export function anniversaryCountdownLabel(days: number): string {
+  if (days <= 0) return 'Today!'
+  if (days === 1) return 'Tomorrow'
+  return `In ${days} days`
 }
 
 export function moodByHour(hour: number): DayMood {
   if (hour < 5)
-    return { from: '#1e1b4b', via: '#0a0a0d', accent: '#a5b4fc', label: 'late night' }
+    return {
+      from: '#a78bfa', // warm violet-rose
+      via: '#7c3aed',
+      tint: '#1a1320',
+      accent: '#fbcfe8',
+      label: 'late night',
+    }
   if (hour < 9)
-    return { from: '#fb923c', via: '#0c0c10', accent: '#fbbf24', label: 'sunrise' }
+    return {
+      from: '#fb923c', // sunrise peach
+      via: '#f97316',
+      tint: '#1c1410',
+      accent: '#fed7aa',
+      label: 'sunrise',
+    }
   if (hour < 12)
-    return { from: '#38bdf8', via: '#0c0c10', accent: '#a5b4fc', label: 'morning' }
+    return {
+      from: '#fbbf24', // warm amber morning
+      via: '#f59e0b',
+      tint: '#1c1610',
+      accent: '#fef3c7',
+      label: 'morning',
+    }
   if (hour < 17)
-    return { from: '#0ea5e9', via: '#0c0c10', accent: '#818cf8', label: 'afternoon' }
+    return {
+      from: '#f59e0b', // afternoon gold
+      via: '#f97316',
+      tint: '#1c1510',
+      accent: '#fcd34d',
+      label: 'afternoon',
+    }
   if (hour < 20)
-    return { from: '#f97316', via: '#0c0c10', accent: '#fb7185', label: 'golden hour' }
-  return { from: '#6366f1', via: '#0c0c10', accent: '#a5b4fc', label: 'evening' }
+    return {
+      from: '#f97316', // golden hour orange
+      via: '#ec4899',
+      tint: '#1f1314',
+      accent: '#fdba74',
+      label: 'golden hour',
+    }
+  return {
+    from: '#ec4899', // dusky rose evening
+    via: '#a855f7',
+    tint: '#1c1318',
+    accent: '#f9a8d4',
+    label: 'evening',
+  }
 }
 
 /**

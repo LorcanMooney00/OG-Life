@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDominantHorizontalSwipe } from '../hooks/useDominantHorizontalSwipe'
 import type { CalendarEvent } from '../types'
 import { createId } from '../lib/id'
-import { compareEventTime, toYmd } from '../lib/date'
+import { anniversaryEmoji, compareEventTime, toYmd } from '../lib/date'
 
 const MONTHS = [
   'January',
@@ -57,7 +57,9 @@ const recurrenceLabels: Record<CalendarEvent['recurrence'], string> = {
   biweekly: 'Every 2 weeks',
   every4weeks: 'Every 4 weeks',
   monthly: 'Every month',
+  yearly: 'Every year',
 }
+
 
 function ChevronLeft({ className }: { className?: string }) {
   return (
@@ -246,6 +248,7 @@ export function CalendarView({ events, onChange, onVisibleMonthChange }: Props) 
       eventTime: null,
       recurrence: 'none',
       recurrenceEndDate: null,
+      isAnniversary: false,
       createdAt: new Date().toISOString(),
     })
   }
@@ -257,6 +260,7 @@ export function CalendarView({ events, onChange, onVisibleMonthChange }: Props) 
       ...sourceEvent,
       recurrence: sourceEvent.recurrence ?? 'none',
       recurrenceEndDate: sourceEvent.recurrenceEndDate ?? null,
+      isAnniversary: Boolean(sourceEvent.isAnniversary),
     })
   }
 
@@ -419,7 +423,7 @@ export function CalendarView({ events, onChange, onVisibleMonthChange }: Props) 
 
       {/* Agenda — inset grouped list below grid (iOS order) */}
       {selectedDay !== null && (
-        <section className="overflow-hidden rounded-[10px] bg-[#2c2c2e]/90 ring-1 ring-white/[0.08]">
+        <section className="overflow-hidden rounded-[10px] bg-[#26201f]/90 ring-1 ring-white/[0.08]">
           <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] px-4 py-3">
             <div className="min-w-0">
               <p className="text-[13px] font-semibold text-white/90">
@@ -469,6 +473,7 @@ export function CalendarView({ events, onChange, onVisibleMonthChange }: Props) 
                     </div>
                     <div className="min-w-0 flex-1 border-l-2 border-[#0a84ff]/80 pl-3">
                       <p className="text-[15px] font-semibold leading-snug text-white">
+                        {ev.isAnniversary ? `${anniversaryEmoji(ev.title)} ` : ''}
                         {ev.title}
                       </p>
                       {ev.recurrence !== 'none' && (
@@ -493,7 +498,7 @@ export function CalendarView({ events, onChange, onVisibleMonthChange }: Props) 
       {draft && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 sm:items-center sm:p-4">
           <div
-            className="ios-font max-h-[min(92dvh,900px)] w-full max-w-md overflow-y-auto rounded-t-[12px] bg-[#1c1c1e] shadow-2xl sm:rounded-[12px]"
+            className="ios-font max-h-[min(92dvh,900px)] w-full max-w-md overflow-y-auto rounded-t-[12px] bg-[#1c1618] shadow-2xl sm:rounded-[12px]"
             style={{
               paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
             }}
@@ -527,7 +532,7 @@ export function CalendarView({ events, onChange, onVisibleMonthChange }: Props) 
             </div>
 
             <div className="space-y-4 p-4">
-              <div className="overflow-hidden rounded-[10px] bg-[#2c2c2e] ring-1 ring-white/[0.06]">
+              <div className="overflow-hidden rounded-[10px] bg-[#26201f] ring-1 ring-white/[0.06]">
                 <label className="block border-b border-white/[0.08] px-4 py-2">
                   <span className="sr-only">Title</span>
                   <input
@@ -551,7 +556,7 @@ export function CalendarView({ events, onChange, onVisibleMonthChange }: Props) 
                 </label>
               </div>
 
-              <div className="overflow-hidden rounded-[10px] bg-[#2c2c2e] ring-1 ring-white/[0.06]">
+              <div className="overflow-hidden rounded-[10px] bg-[#26201f] ring-1 ring-white/[0.06]">
                 <div className="flex items-center border-b border-white/[0.08] px-4 py-2">
                   <span className="w-24 shrink-0 text-[17px] text-white">Starts</span>
                   <input
@@ -597,6 +602,7 @@ export function CalendarView({ events, onChange, onVisibleMonthChange }: Props) 
                     <option value="biweekly">Every 2 weeks</option>
                     <option value="every4weeks">Every 4 weeks</option>
                     <option value="monthly">Every month</option>
+                    <option value="yearly">Every year</option>
                   </select>
                 </div>
                 {(draft.recurrence ?? 'none') !== 'none' && (
@@ -616,13 +622,49 @@ export function CalendarView({ events, onChange, onVisibleMonthChange }: Props) 
                     />
                   </div>
                 )}
+                {/* Anniversary toggle — turning it on auto-defaults to a
+                    yearly recurrence with no end date so the user doesn't have
+                    to remember to change the Repeat select. Turning it off
+                    leaves the recurrence as-is so we don’t fight the user. */}
+                <label className="flex items-center border-t border-white/[0.08] px-4 py-2">
+                  <span className="w-24 shrink-0 text-[17px] text-white">
+                    Anniversary
+                  </span>
+                  <span className="ml-auto flex items-center gap-3">
+                    {draft.isAnniversary ? (
+                      <span className="text-[14px] text-amber-300/90">
+                        {anniversaryEmoji(draft.title)} Annual countdown
+                      </span>
+                    ) : (
+                      <span className="text-[14px] text-[#8e8e93]">
+                        Birthday / yearly milestone
+                      </span>
+                    )}
+                    <input
+                      type="checkbox"
+                      checked={draft.isAnniversary}
+                      onChange={(e) => {
+                        const on = e.target.checked
+                        setDraft({
+                          ...draft,
+                          isAnniversary: on,
+                          recurrence: on
+                            ? 'yearly'
+                            : (draft.recurrence ?? 'none'),
+                          recurrenceEndDate: on ? null : draft.recurrenceEndDate,
+                        })
+                      }}
+                      className="h-5 w-5 accent-amber-400"
+                    />
+                  </span>
+                </label>
               </div>
 
               {events.some((e) => e.id === draft.id) && (
                 <button
                   type="button"
                   onClick={() => setConfirmDeleteId(draft.id)}
-                  className="w-full rounded-[10px] bg-[#2c2c2e] py-3 text-center text-[17px] font-semibold text-[#ff453a] ring-1 ring-white/[0.06] active:bg-[#3a3a3c]"
+                  className="w-full rounded-[10px] bg-[#26201f] py-3 text-center text-[17px] font-semibold text-[#ff453a] ring-1 ring-white/[0.06] active:bg-[#3a322f]"
                 >
                   Delete Event
                 </button>
@@ -635,7 +677,7 @@ export function CalendarView({ events, onChange, onVisibleMonthChange }: Props) 
       {confirmDeleteId && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/55 p-4 sm:items-center">
           <div
-            className="ios-font w-full max-w-sm overflow-hidden rounded-[14px] bg-[#2c2c2e] shadow-xl"
+            className="ios-font w-full max-w-sm overflow-hidden rounded-[14px] bg-[#26201f] shadow-xl"
             style={{
               paddingBottom: 'max(0px, env(safe-area-inset-bottom))',
             }}
