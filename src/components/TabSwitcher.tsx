@@ -1,12 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { haptic } from '../lib/haptics'
 import {
+  anniversaryCountdownLabel,
+  anniversaryEmoji,
   formatClockTime,
   formatLongDate,
+  formatNextWhen,
   formatShortDayLabel,
+  moodByHour,
   toYmd,
 } from '../lib/date'
-import { occurrencesOnDate } from '../lib/calendarOccurrences'
+import {
+  findNextOccurrence,
+  findUpcomingAnniversaries,
+  occurrencesOnDate,
+} from '../lib/calendarOccurrences'
 import type { EventOccurrence } from '../lib/calendarOccurrences'
 import type { CalendarEvent, ShoppingItem } from '../types'
 
@@ -298,6 +306,7 @@ export function TabSwitcher({
                       upcomingEvents={upcomingEvents}
                       shoppingRemaining={shoppingRemaining}
                       purchasedCount={purchasedCount}
+                      calendarEvents={calendarEvents}
                     />
                   ) : (
                     <ShoppingPreview items={shoppingItems} />
@@ -371,49 +380,149 @@ function HomePreview({
   todaysEvents,
   upcomingEvents,
   shoppingRemaining,
-  purchasedCount,
+  calendarEvents,
 }: {
   today: Date
   heroGreeting: string
   todaysEvents: EventOccurrence[]
   upcomingEvents: EventOccurrence[]
   shoppingRemaining: number
+  calendarEvents: CalendarEvent[]
+  /** Kept in the parent prop shape for symmetry; unused here. */
   purchasedCount: number
 }) {
+  // Mirror the real Home: pull the same mood gradient, next-up occurrence
+  // and anniversary list so the preview always reflects the live screen
+  // rather than a baked-in stat-tile mockup.
+  const mood = useMemo(() => moodByHour(today.getHours()), [today])
+  const nextOccurrence = useMemo(
+    () => findNextOccurrence(calendarEvents, today, 30),
+    [calendarEvents, today],
+  )
+  const nextWhen = nextOccurrence
+    ? formatNextWhen(nextOccurrence.date, nextOccurrence.event.eventTime, today)
+    : null
+  const upcomingAnniversaries = useMemo(
+    () => findUpcomingAnniversaries(calendarEvents, today, 7),
+    [calendarEvents, today],
+  )
+
   return (
     <PreviewChrome eyebrow="HOME" title="Home" subtitle="Your quick dashboard">
       <div className="space-y-3">
-        <div className="relative overflow-hidden rounded-[12px] bg-gradient-to-br from-amber-500/25 via-[#1c1618] to-[#1c1618] p-3 ring-1 ring-white/[0.08]">
-          <p className="text-[8px] font-semibold uppercase tracking-[0.16em] text-amber-200/80">
+        {/* Warm hero — same composition as the real one, scaled down to fit. */}
+        <div
+          className="relative overflow-hidden rounded-[12px] p-3 ring-1 ring-white/[0.08]"
+          style={{
+            background: `radial-gradient(110% 75% at 100% 0%, ${mood.accent}33 0%, transparent 55%), linear-gradient(135deg, ${mood.from}80 0%, ${mood.via}55 45%, ${mood.tint} 100%)`,
+            boxShadow: `0 12px 28px -18px ${mood.from}80, inset 0 1px 0 rgba(255,255,255,0.06)`,
+          }}
+        >
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full blur-2xl"
+            style={{ background: mood.from, opacity: 0.35 }}
+          />
+          <p
+            className="relative text-[8px] font-semibold uppercase tracking-[0.16em]"
+            style={{ color: mood.accent }}
+          >
             {formatLongDate(today)}
           </p>
-          <p className="mt-0.5 truncate text-[13px] font-semibold text-white">
+          <p className="relative mt-0.5 truncate text-[14px] font-semibold text-white">
             {heroGreeting}
           </p>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <div className="rounded-[8px] bg-white/[0.05] p-2 ring-1 ring-white/[0.05]">
-              <p className="text-[8px] uppercase tracking-wide text-white/55">
-                Upcoming
+
+          {/* Focus tile — Next up / On the list / All clear, like Home. */}
+          {nextOccurrence && nextWhen ? (
+            <div className="relative mt-2 rounded-[10px] bg-white/[0.10] px-2.5 py-2 ring-1 ring-white/[0.12] backdrop-blur">
+              <p
+                className="text-[8px] font-semibold uppercase tracking-[0.14em]"
+                style={{ color: mood.accent }}
+              >
+                Next up
               </p>
-              <p className="text-[18px] font-semibold leading-none text-white">
-                {todaysEvents.length + upcomingEvents.length}
+              <p className="mt-0.5 truncate text-[12px] font-semibold text-white">
+                {nextOccurrence.event.title || 'Untitled'}
+              </p>
+              <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                {nextWhen.countdown ? (
+                  <span
+                    className="rounded-full px-1.5 py-px text-[9px] font-semibold text-white"
+                    style={{
+                      background: `${mood.accent}40`,
+                      boxShadow: `inset 0 0 0 1px ${mood.accent}55`,
+                    }}
+                  >
+                    {nextWhen.countdown}
+                  </span>
+                ) : null}
+                <span className="text-[9px] text-white/75">{nextWhen.when}</span>
+              </div>
+            </div>
+          ) : shoppingRemaining > 0 ? (
+            <div className="relative mt-2 rounded-[10px] bg-white/[0.10] px-2.5 py-2 ring-1 ring-white/[0.12] backdrop-blur">
+              <p
+                className="text-[8px] font-semibold uppercase tracking-[0.14em]"
+                style={{ color: mood.accent }}
+              >
+                On the list
+              </p>
+              <p className="mt-0.5 text-[12px] font-semibold text-white">
+                {shoppingRemaining === 1
+                  ? '1 item to grab'
+                  : `${shoppingRemaining} items to grab`}
               </p>
             </div>
-            <div className="rounded-[8px] bg-white/[0.05] p-2 ring-1 ring-white/[0.05]">
-              <p className="text-[8px] uppercase tracking-wide text-white/55">
-                Shopping
+          ) : (
+            <div className="relative mt-2 rounded-[10px] bg-white/[0.08] px-2.5 py-2 ring-1 ring-white/[0.10] backdrop-blur">
+              <p
+                className="text-[8px] font-semibold uppercase tracking-[0.14em]"
+                style={{ color: mood.accent }}
+              >
+                All clear
               </p>
-              <p className="text-[18px] font-semibold leading-none text-white">
-                {shoppingRemaining}
+              <p className="mt-0.5 text-[12px] font-semibold text-white">
+                Nothing on the books.
               </p>
-              {purchasedCount > 0 ? (
-                <p className="text-[8px] text-white/45">
-                  {purchasedCount} done
-                </p>
-              ) : null}
+            </div>
+          )}
+        </div>
+
+        {/* Anniversary mini-card — only when one or more land in the week. */}
+        {upcomingAnniversaries.length > 0 ? (
+          <div className="relative overflow-hidden rounded-[12px] p-[1px] ring-1 ring-amber-300/20">
+            <div className="rounded-[11px] bg-gradient-to-br from-amber-500/25 via-[#1c1618] to-[#1c1618] p-2.5 ring-1 ring-white/[0.04]">
+              <p className="text-[8px] font-semibold uppercase tracking-[0.14em] text-amber-200/85">
+                Coming up
+              </p>
+              <ul className="mt-1 space-y-1">
+                {upcomingAnniversaries.slice(0, 2).map(({ occurrence, daysUntil, yearsSince }) => (
+                  <li
+                    key={occurrence.event.id + '::ann::' + occurrence.ymd}
+                    className="flex items-center gap-1.5"
+                  >
+                    <span
+                      aria-hidden
+                      className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-[11px] ring-1 ring-amber-300/30"
+                    >
+                      {anniversaryEmoji(occurrence.event.title)}
+                    </span>
+                    <span className="truncate text-[11px] font-medium text-white">
+                      {occurrence.event.title || 'Anniversary'}
+                    </span>
+                    <span className="ml-auto flex-shrink-0 text-[9px] font-semibold text-amber-200">
+                      {anniversaryCountdownLabel(daysUntil)}
+                      {yearsSince > 0
+                        ? ` · ${yearsSince}y`
+                        : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
-        </div>
+        ) : null}
 
         {todaysEvents.length > 0 ? (
           <div className="rounded-[12px] bg-[#1c1618] p-3 ring-1 ring-white/[0.08]">
