@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useInstallPrompt } from '../contexts/InstallPromptContext'
-import { signOut, useAuth } from '../lib/auth'
+import { signOut, updateUsername, useAuth } from '../lib/auth'
 import type { PartnerSummary } from '../types'
 import {
   initOneSignal,
@@ -28,6 +28,21 @@ export default function SettingsPage() {
     skippedLocalhost: boolean
   }>({ ready: false, supported: false, subscribed: false, skippedLocalhost: false })
   const [pushBusy, setPushBusy] = useState(false)
+  const currentUsername =
+    (user?.user_metadata?.username as string | undefined)?.trim() ?? ''
+  // SettingsPage is gated behind RequireAuth so `user` is already loaded on
+  // first render. Initialise the input from the session lazily — we don’t want
+  // to call setState in an effect just to sync with a derived value (lint
+  // rule react-hooks/set-state-in-effect would also reject that pattern).
+  const [username, setUsername] = useState(currentUsername)
+  const [savedUsernameSeed, setSavedUsernameSeed] = useState(currentUsername)
+  if (currentUsername !== savedUsernameSeed) {
+    // Auth fired USER_UPDATED (e.g. another tab saved a new name). Snap the
+    // input to the latest server value the moment we notice during render.
+    setSavedUsernameSeed(currentUsername)
+    setUsername(currentUsername)
+  }
+  const [savingUsername, setSavingUsername] = useState(false)
   const {
     deferred: deferredInstall,
     installMessage,
@@ -201,6 +216,25 @@ export default function SettingsPage() {
     setBusy(false)
   }
 
+  const handleSaveUsername = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = username.trim()
+    if (trimmed === currentUsername) {
+      setMessage('Display name unchanged.')
+      return
+    }
+    setSavingUsername(true)
+    setError(null)
+    setMessage(null)
+    const result = await updateUsername(trimmed)
+    if (!result.success) {
+      setError(result.error ?? 'Could not update display name')
+    } else {
+      setMessage('Display name updated.')
+    }
+    setSavingUsername(false)
+  }
+
   const handleSignOut = async () => {
     setBusy(true)
     await signOut()
@@ -244,6 +278,33 @@ export default function SettingsPage() {
           <p className="mt-1 truncate text-[17px] font-medium text-white">
             {user?.email ?? '—'}
           </p>
+        </section>
+
+        <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">
+          <p className="text-[15px] font-semibold text-white">Display name</p>
+          <p className="mt-1 text-[13px] leading-snug text-[#8e8e93]">
+            Used for the Home greeting and shown to any partners you’re linked with.
+            If you signed up through the app you’ll already have one; accounts created
+            directly in Supabase can set it here.
+          </p>
+          <form className="mt-4 space-y-3" onSubmit={handleSaveUsername}>
+            <input
+              type="text"
+              autoComplete="nickname"
+              maxLength={40}
+              placeholder="e.g. Lorcan"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full rounded-[10px] border border-[#3a3a3c] bg-[#2c2c2e] px-3 py-3 text-[17px] text-white placeholder-[#8e8e93] focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              type="submit"
+              disabled={savingUsername || username.trim().length === 0}
+              className="w-full rounded-[10px] bg-indigo-600 py-3 text-[17px] font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+            >
+              {savingUsername ? 'Saving…' : 'Save display name'}
+            </button>
+          </form>
         </section>
 
         <section className="rounded-[12px] bg-[#1c1c1e] p-4 ring-1 ring-white/[0.08]">

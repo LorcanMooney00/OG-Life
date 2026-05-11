@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { haptic } from '../lib/haptics'
 
 type Options = {
   onSwipeLeft?: () => void
@@ -272,11 +273,7 @@ export function useTabSwipeGesture({
     const engage = (dx: number) => {
       engaged = true
       setScrubbing(true)
-      try {
-        navigator.vibrate?.(8)
-      } catch {
-        /* not all devices support haptics */
-      }
+      haptic('light')
       applyScrubTransform(dx)
     }
 
@@ -346,6 +343,7 @@ export function useTabSwipeGesture({
         engaged = false
         setScrubbing(false)
         clearScrubTransform()
+        if (direction === 'next' || direction === 'prev') haptic('medium')
         if (direction === 'next') next?.()
         else if (direction === 'prev') prev?.()
       }

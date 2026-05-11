@@ -5,7 +5,28 @@ import { toYmd } from './date'
 const CAL_SELECT =
   'id,created_by,title,notes,event_date,event_time,recurrence,recurrence_end_date,created_at'
 
-const SHOP_SELECT = 'id,created_by,item_name,quantity,purchased,created_at'
+// `*` keeps the SELECT working when the (optional) `sort_order` column hasn’t
+// been added yet on the Supabase project — the row mapper reads it defensively.
+const SHOP_SELECT = '*'
+
+/**
+ * Tracks whether the running Supabase project has the `sort_order` column.
+ * Detected lazily on the first fetch:
+ *   - true  → include `sort_order` in inserts/updates and order by it on fetch.
+ *   - false → strip it from payloads (drag-to-reorder is a no-op until the
+ *             migration in `supabase/migration_shopping_sort_order.sql` is run).
+ *   - null  → not yet determined; assume true and let `fetchShoppingItems`
+ *             flip the flag if it sees the “column does not exist” error.
+ */
+let sortOrderSupported: boolean | null = null
+
+/** Postgres SQLSTATE 42703 = `undefined_column`. PostgREST also surfaces this
+ * inside `error.message`. */
+function isMissingSortOrderError(err: { code?: string; message?: string } | null): boolean {
+  if (!err) return false
+  if (err.code === '42703') return true
+  return /sort_order/.test(err.message ?? '') && /does not exist|could not find/i.test(err.message ?? '')
+}
 
 type CalendarRow = {
   id: string
@@ -25,6 +46,7 @@ type ShoppingRow = {
   item_name: string
   quantity: string | null
   purchased: boolean
+  sort_order: number | null
   created_at: string
 }
 
@@ -47,6 +69,7 @@ export function rowToShoppingItem(r: ShoppingRow): ShoppingItem {
     name: r.item_name,
     quantity: r.quantity,
     purchased: r.purchased,
+    sortOrder: r.sort_order ?? 0,
     createdAt: r.created_at,
   }
 }
@@ -110,6 +133,23 @@ export async function fetchCalendarEventsForDashboard(
 export async function fetchShoppingItems(
   client: SupabaseClient,
 ): Promise<ShoppingItem[]> {
+  // Try the new ordering first. If the column isn’t deployed yet we’ll get a
+  // PostgREST/Postgres “column does not exist” error and silently fall back.
+  if (sortOrderSupported !== false) {
+    const { data, error } = await client
+      .from('shopping_items')
+      .select(SHOP_SELECT)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+
+    if (!error) {
+      if (sortOrderSupported === null) sortOrderSupported = true
+      return (data as ShoppingRow[] | null)?.map(rowToShoppingItem) ?? []
+    }
+    if (!isMissingSortOrderError(error)) throw error
+    sortOrderSupported = false
+  }
+
   const { data, error } = await client
     .from('shopping_items')
     .select(SHOP_SELECT)
@@ -133,13 +173,18 @@ function eventPayload(e: CalendarEvent, userId: string) {
 }
 
 function shoppingPayload(i: ShoppingItem, userId: string) {
-  return {
+  const base = {
     id: i.id,
     created_by: userId,
     item_name: i.name,
     quantity: i.quantity,
     purchased: i.purchased,
   }
+  // Only attach sort_order when the column is known to exist; otherwise
+  // PostgREST rejects the whole row with a 400.
+  return sortOrderSupported === false
+    ? base
+    : { ...base, sort_order: i.sortOrder }
 }
 
 function sameEvent(a: CalendarEvent, b: CalendarEvent) {
@@ -157,7 +202,8 @@ function sameItem(a: ShoppingItem, b: ShoppingItem) {
   return (
     a.name === b.name &&
     a.quantity === b.quantity &&
-    a.purchased === b.purchased
+    a.purchased === b.purchased &&
+    a.sortOrder === b.sortOrder
   )
 }
 
@@ -222,20 +268,45 @@ export async function persistShoppingChange(
       const { error } = await client
         .from('shopping_items')
         .insert(shoppingPayload(item, userId))
-      if (error) console.error('shopping insert', error)
+      if (error && isMissingSortOrderError(error)) {
+        // Same fallback as on UPDATE: drop sort_order and retry once.
+        sortOrderSupported = false
+        const retry = await client
+          .from('shopping_items')
+          .insert(shoppingPayload(item, userId))
+        if (retry.error) console.error('shopping insert', retry.error)
+      } else if (error) {
+        console.error('shopping insert', error)
+      }
       continue
     }
     const p = prevMap.get(item.id)!
     if (!sameItem(p, item)) {
+      const updatePayload: Record<string, unknown> = {
+        item_name: item.name,
+        quantity: item.quantity,
+        purchased: item.purchased,
+      }
+      if (sortOrderSupported !== false) {
+        updatePayload.sort_order = item.sortOrder
+      }
       const { error } = await client
         .from('shopping_items')
-        .update({
-          item_name: item.name,
-          quantity: item.quantity,
-          purchased: item.purchased,
-        })
+        .update(updatePayload)
         .eq('id', item.id)
-      if (error) console.error('shopping update', error)
+      // If the column truly isn’t there, flip the flag and retry without it
+      // so a subsequent partner edit doesn’t spam errors forever.
+      if (error && isMissingSortOrderError(error)) {
+        sortOrderSupported = false
+        delete updatePayload.sort_order
+        const retry = await client
+          .from('shopping_items')
+          .update(updatePayload)
+          .eq('id', item.id)
+        if (retry.error) console.error('shopping update', retry.error)
+      } else if (error) {
+        console.error('shopping update', error)
+      }
     }
   }
 }

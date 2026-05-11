@@ -1,7 +1,24 @@
 import { useCallback, useMemo, useState } from 'react'
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useLockingHorizontalSwipeRef } from '../hooks/useDominantHorizontalSwipe'
 import type { ShoppingItem } from '../types'
 import { createId } from '../lib/id'
+import { haptic } from '../lib/haptics'
 
 type Props = {
   items: ShoppingItem[]
@@ -91,6 +108,30 @@ function IconPlusCircle({ className }: { className?: string }) {
   )
 }
 
+function IconGrip({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle cx="9" cy="6" r="1" />
+      <circle cx="9" cy="12" r="1" />
+      <circle cx="9" cy="18" r="1" />
+      <circle cx="15" cy="6" r="1" />
+      <circle cx="15" cy="12" r="1" />
+      <circle cx="15" cy="18" r="1" />
+    </svg>
+  )
+}
+
 function IconSearch({ className }: { className?: string }) {
   return (
     <svg
@@ -108,6 +149,88 @@ function IconSearch({ className }: { className?: string }) {
       <circle cx="11" cy="11" r="7" />
       <path d="m20 20-3.5-3.5" />
     </svg>
+  )
+}
+
+type SortableRowProps = {
+  item: ShoppingItem
+  showDivider: boolean
+  onToggle: () => void
+  onOpenEdit: () => void
+  draggable: boolean
+}
+
+function SortableRow({
+  item,
+  showDivider,
+  onToggle,
+  onOpenEdit,
+  draggable,
+}: SortableRowProps) {
+  const sortable = useSortable({ id: item.id, disabled: !draggable })
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = sortable
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+    // Lift the dragged row off the list so the shadow reads correctly.
+    boxShadow: isDragging
+      ? '0 16px 32px rgba(0,0,0,0.45), 0 4px 12px rgba(0,0,0,0.35)'
+      : undefined,
+    backgroundColor: isDragging ? '#2c2c2e' : undefined,
+    borderRadius: isDragging ? 10 : undefined,
+  }
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center ${
+        showDivider && !isDragging ? 'border-t border-white/[0.08]' : ''
+      }`}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center pl-3 active:bg-white/[0.06]"
+        aria-label={`Mark ${item.name} as bought`}
+      >
+        <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 border-[#636366] bg-transparent" />
+      </button>
+      <button
+        type="button"
+        onClick={onOpenEdit}
+        className="flex min-h-[48px] min-w-0 flex-1 flex-col justify-center py-2 pr-2 text-left active:bg-white/[0.06]"
+      >
+        <span className="text-[17px] font-normal leading-snug text-white">
+          {item.name}
+        </span>
+        {item.quantity ? (
+          <span className="text-[15px] leading-snug text-[#8e8e93]">
+            {item.quantity}
+          </span>
+        ) : null}
+      </button>
+      {draggable ? (
+        <button
+          type="button"
+          aria-label={`Reorder ${item.name}`}
+          // touch-none keeps the browser from scrolling while @dnd-kit is dragging.
+          className="flex min-h-[48px] min-w-[44px] shrink-0 cursor-grab items-center justify-center pr-2 text-[#636366] active:cursor-grabbing active:text-white touch-none"
+          {...attributes}
+          {...listeners}
+        >
+          <IconGrip className="h-5 w-5" />
+        </button>
+      ) : null}
+    </li>
   )
 }
 
@@ -154,11 +277,13 @@ export function ShoppingListView({ items, onChange }: Props) {
   const addItem = (name: string, quantity: string | null) => {
     const trimmed = name.trim()
     if (!trimmed) return
+    const maxSort = items.reduce((m, i) => Math.max(m, i.sortOrder), 0)
     const next: ShoppingItem = {
       id: createId(),
       name: trimmed,
       quantity: quantity?.trim() ? quantity.trim() : null,
       purchased: false,
+      sortOrder: maxSort + 1,
       createdAt: new Date().toISOString(),
     }
     onChange([...items, next])
@@ -172,13 +297,28 @@ export function ShoppingListView({ items, onChange }: Props) {
   }
 
   const toggle = (id: string, purchasedFlag: boolean) => {
+    haptic('light')
+    // Un-ticking sends an item back to the bottom of the active list so it
+    // doesn’t resurrect at some random position halfway up.
+    const maxSort = items.reduce((m, i) => Math.max(m, i.sortOrder), 0)
     onChange(
-      items.map((i) => (i.id === id ? { ...i, purchased: purchasedFlag } : i)),
+      items.map((i) => {
+        if (i.id !== id) return i
+        if (purchasedFlag) return { ...i, purchased: true }
+        return { ...i, purchased: false, sortOrder: maxSort + 1 }
+      }),
     )
   }
 
   const remove = (id: string) => {
     onChange(items.filter((i) => i.id !== id))
+  }
+
+  const clearPurchased = () => {
+    const purchasedCount = items.reduce((n, i) => n + (i.purchased ? 1 : 0), 0)
+    if (purchasedCount === 0) return
+    haptic('medium')
+    onChange(items.filter((i) => !i.purchased))
   }
 
   const openEdit = (item: ShoppingItem) => {
@@ -214,6 +354,34 @@ export function ShoppingListView({ items, onChange }: Props) {
 
   const addRecentItem = (name: string) => {
     addItem(name, null)
+  }
+
+  // PointerSensor covers desktop / mouse; TouchSensor covers mobile. The 200ms
+  // delay on touch means tapping a row still opens edit, scrolling still works,
+  // and a deliberate press-and-drag on the grip handle starts a reorder.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    }),
+  )
+
+  const dragEnabled = !query.trim()
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active: draggedId, over } = e
+    if (!over || draggedId.id === over.id) return
+    const oldIndex = active.findIndex((i) => i.id === draggedId.id)
+    const newIndex = active.findIndex((i) => i.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+    haptic('light')
+    const reordered = arrayMove(active, oldIndex, newIndex).map((it, i) => ({
+      ...it,
+      sortOrder: i + 1,
+    }))
+    // Active list owns the order; completed rows keep their existing order
+    // since they live in their own section.
+    onChange([...reordered, ...completed])
   }
 
   const onListSwipeLeft = useCallback(() => {
@@ -370,55 +538,60 @@ export function ShoppingListView({ items, onChange }: Props) {
                 )}
               </div>
             ) : (
-              <ul className="overflow-hidden rounded-[10px] bg-[#2c2c2e] ring-1 ring-white/[0.08]">
-                {active.map((item, idx) => (
-                  <li
-                    key={item.id}
-                    className={`flex items-center ${idx > 0 ? 'border-t border-white/[0.08]' : ''}`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => toggle(item.id, true)}
-                      className="flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center pl-3 active:bg-white/[0.06]"
-                      aria-label={`Mark ${item.name} as bought`}
-                    >
-                      <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 border-[#636366] bg-transparent" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openEdit(item)}
-                      className="flex min-h-[48px] min-w-0 flex-1 flex-col justify-center py-2 pr-4 text-left active:bg-white/[0.06]"
-                    >
-                      <span className="text-[17px] font-normal leading-snug text-white">
-                        {item.name}
-                      </span>
-                      {item.quantity ? (
-                        <span className={`text-[15px] leading-snug ${iosSecondary}`}>
-                          {item.quantity}
-                        </span>
-                      ) : null}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={active.map((i) => i.id)}
+                  strategy={verticalListSortingStrategy}
+                  disabled={!dragEnabled}
+                >
+                  <ul className="overflow-hidden rounded-[10px] bg-[#2c2c2e] ring-1 ring-white/[0.08]">
+                    {active.map((item, idx) => (
+                      <SortableRow
+                        key={item.id}
+                        item={item}
+                        showDivider={idx > 0}
+                        onToggle={() => toggle(item.id, true)}
+                        onOpenEdit={() => openEdit(item)}
+                        draggable={dragEnabled}
+                      />
+                    ))}
+                  </ul>
+                </SortableContext>
+              </DndContext>
             )}
           </section>
 
           {/* Completed — disclosure */}
           <section>
-            <button
-              type="button"
-              onClick={() => setShowCompleted((v) => !v)}
-              className="mb-2 flex w-full items-center justify-between px-4 text-left active:opacity-80"
-            >
-              <span className={`text-[13px] font-semibold uppercase ${iosSecondary}`}>
-                Completed
-                {completed.length > 0 ? (
-                  <span className="font-normal text-white/50"> · {completed.length}</span>
-                ) : null}
-              </span>
-              <ChevronDown open={showCompleted} className={iosSecondary} />
-            </button>
+            <div className="mb-2 flex w-full items-center gap-2 px-4">
+              <button
+                type="button"
+                onClick={() => setShowCompleted((v) => !v)}
+                className="flex flex-1 items-center justify-between text-left active:opacity-80"
+              >
+                <span className={`text-[13px] font-semibold uppercase ${iosSecondary}`}>
+                  Completed
+                  {completed.length > 0 ? (
+                    <span className="font-normal text-white/50"> · {completed.length}</span>
+                  ) : null}
+                </span>
+                <ChevronDown open={showCompleted} className={iosSecondary} />
+              </button>
+              {completed.length > 0 && !query.trim() ? (
+                <button
+                  type="button"
+                  onClick={clearPurchased}
+                  className="shrink-0 rounded-full bg-white/[0.06] px-3 py-1 text-[12px] font-semibold text-[#ff453a] ring-1 ring-white/[0.06] active:bg-white/[0.1]"
+                  aria-label={`Clear ${completed.length} purchased item${completed.length === 1 ? '' : 's'}`}
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
 
             {showCompleted && (
               <>

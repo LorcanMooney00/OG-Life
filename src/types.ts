@@ -14,6 +14,7 @@ export type ShoppingItem = {
   name: string
   quantity: string | null
   purchased: boolean
+  sortOrder: number
   createdAt: string
 }
 

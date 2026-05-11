@@ -111,6 +111,9 @@ create table if not exists public.shopping_items (
   item_name text not null,
   quantity text,
   purchased boolean not null default false,
+  -- Per-creator ordering for drag-to-reorder. The client rewrites all moved
+  -- rows on a drop, so we just need a numeric tiebreaker; no float trickery.
+  sort_order integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint shopping_name_len check (char_length(item_name) <= 300),
@@ -122,6 +125,9 @@ create index if not exists shopping_items_by_owner_created_idx
 
 create index if not exists shopping_items_active_idx
   on public.shopping_items (created_by, purchased);
+
+create index if not exists shopping_items_sort_order_idx
+  on public.shopping_items (created_by, sort_order);
 
 -- Prevent ownership drift (partners can edit rows, but must not reassign creator)
 create or replace function public.prevent_change_created_by()

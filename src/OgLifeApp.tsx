@@ -2,7 +2,10 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarView } from './components/CalendarView'
 import { useTabSwipeGesture } from './hooks/useDominantHorizontalSwipe'
+import { usePullToRefresh } from './hooks/usePullToRefresh'
 import { ShoppingListView } from './components/ShoppingListView'
+import { CalendarSkeleton, ShoppingSkeleton } from './components/Skeletons'
+import { PullToRefreshIndicator } from './components/PullToRefreshIndicator'
 import { useInstallPrompt } from './contexts/InstallPromptContext'
 import { useAuth } from './lib/auth'
 import {
@@ -46,6 +49,12 @@ export default function OgLifeApp() {
     return { y: n.getFullYear(), m: n.getMonth() }
   })
   const [syncNote, setSyncNote] = useState<string | null>(null)
+  // Per-resource initial-load flags: drive the skeleton placeholders. We only
+  // show skeletons on the *first* load — subsequent fetches (month changes,
+  // refreshes) keep the old data on screen to avoid jarring flashes.
+  const [shoppingLoaded, setShoppingLoaded] = useState(false)
+  const [eventsLoaded, setEventsLoaded] = useState(false)
+  const [dashboardLoaded, setDashboardLoaded] = useState(false)
 
   useLayoutEffect(() => {
     const tab = searchParams.get('screen')
@@ -74,6 +83,8 @@ export default function OgLifeApp() {
       } catch (e) {
         console.error(e)
         if (!cancelled) setSyncNote('Could not load calendar. Check your connection.')
+      } finally {
+        if (!cancelled) setEventsLoaded(true)
       }
     })()
 
@@ -93,6 +104,8 @@ export default function OgLifeApp() {
       } catch (e) {
         console.error(e)
         if (!cancelled) setSyncNote('Could not load shopping list.')
+      } finally {
+        if (!cancelled) setShoppingLoaded(true)
       }
     })()
 
@@ -111,6 +124,8 @@ export default function OgLifeApp() {
         if (!cancelled) setDashboardEvents(evs)
       } catch (e) {
         console.error(e)
+      } finally {
+        if (!cancelled) setDashboardLoaded(true)
       }
     })()
 
@@ -124,6 +139,17 @@ export default function OgLifeApp() {
       prev.y === year && prev.m === monthIndex ? prev : { y: year, m: monthIndex },
     )
   }, [])
+
+  // Pull-to-refresh: re-pulls everything that powers the current screen. We
+  // settle.allSettled so a single failing fetch doesn’t skip the others.
+  const refreshAll = useCallback(async () => {
+    if (!supabase || !userId) return
+    await Promise.allSettled([
+      fetchCalendarEventsForMonth(supabase, calendarMonth.y, calendarMonth.m).then(setEvents),
+      fetchCalendarEventsForDashboard(supabase).then(setDashboardEvents),
+      fetchShoppingItems(supabase).then(setShopping),
+    ])
+  }, [userId, calendarMonth.y, calendarMonth.m])
 
   const handleEventsChange = useCallback(
     (next: CalendarEvent[]) => {
@@ -209,6 +235,15 @@ export default function OgLifeApp() {
     onPrev: onTabPrev,
     enabled: true,
     longPressMs: screen === 'home' ? 0 : 400,
+  })
+
+  // Pull-to-refresh listens on the main scroll container at the bubble phase,
+  // so once the tab-swipe gesture engages (capture phase + stopPropagation)
+  // we don’t fight it.
+  const { pullY, refreshing, pulling } = usePullToRefresh({
+    scrollRef: mainRef as React.RefObject<HTMLElement | null>,
+    enabled: Boolean(userId) && !scrubbing,
+    onRefresh: refreshAll,
   })
 
   // Tilt-stack: figure out direction of the incoming tab so CSS can pick left/right anim.
@@ -298,7 +333,7 @@ export default function OgLifeApp() {
 
       <main
         ref={mainRef}
-        className={`mx-auto w-full min-w-0 max-w-lg min-h-0 flex-1 ${
+        className={`relative mx-auto w-full min-w-0 max-w-lg min-h-0 flex-1 ${
           scrubbing ? 'overflow-hidden' : 'overflow-y-auto'
         } overscroll-y-contain px-4 py-4 [touch-action:pan-x_pan-y] [-webkit-overflow-scrolling:touch]`}
         style={{
@@ -307,6 +342,23 @@ export default function OgLifeApp() {
           paddingRight: 'max(1rem, env(safe-area-inset-right))',
         }}
       >
+        <PullToRefreshIndicator
+          pullY={pullY}
+          refreshing={refreshing}
+          pulling={pulling}
+        />
+        <div
+          // Rubber-bands the entire screen down while the user pulls.
+          // Transition is off mid-pull so it tracks the finger 1:1.
+          style={{
+            transform: `translate3d(0, ${refreshing ? 36 : pullY}px, 0)`,
+            transition:
+              pulling || refreshing
+                ? 'none'
+                : 'transform 260ms cubic-bezier(0.2,0.7,0.2,1)',
+            willChange: 'transform',
+          }}
+        >
         <div
           ref={scrubInnerRef as React.RefObject<HTMLDivElement | null>}
           className={`tab-scrub-wrapper ${scrubbing ? 'is-scrubbing' : ''}`}
@@ -327,13 +379,15 @@ export default function OgLifeApp() {
                   {heroGreeting}
                 </h2>
                 <p className="mt-1 text-[13px] text-[#a1a1aa]">
-                  {todaysEvents.length === 0 && upcoming.length === 0 && shoppingRemaining === 0
-                    ? 'You’re all caught up. Enjoy the calm.'
-                    : todaysEvents.length > 0
-                      ? `${todaysEvents.length} thing${todaysEvents.length === 1 ? '' : 's'} on today${shoppingRemaining > 0 ? ` · ${shoppingRemaining} to grab` : ''}.`
-                      : shoppingRemaining > 0
-                        ? `${shoppingRemaining} item${shoppingRemaining === 1 ? '' : 's'} still on the shopping list.`
-                        : `${upcoming.length} thing${upcoming.length === 1 ? '' : 's'} coming up soon.`}
+                  {!dashboardLoaded || !shoppingLoaded
+                    ? 'Loading your day…'
+                    : todaysEvents.length === 0 && upcoming.length === 0 && shoppingRemaining === 0
+                      ? 'You’re all caught up. Enjoy the calm.'
+                      : todaysEvents.length > 0
+                        ? `${todaysEvents.length} thing${todaysEvents.length === 1 ? '' : 's'} on today${shoppingRemaining > 0 ? ` · ${shoppingRemaining} to grab` : ''}.`
+                        : shoppingRemaining > 0
+                          ? `${shoppingRemaining} item${shoppingRemaining === 1 ? '' : 's'} still on the shopping list.`
+                          : `${upcoming.length} thing${upcoming.length === 1 ? '' : 's'} coming up soon.`}
                 </p>
 
                 <div className="mt-4 grid grid-cols-2 gap-3">
@@ -512,15 +566,22 @@ export default function OgLifeApp() {
               ) : null}
             </div>
           ) : screen === 'calendar' ? (
-            <CalendarView
-              events={events}
-              onChange={handleEventsChange}
-              onVisibleMonthChange={onVisibleMonthChange}
-            />
+            !eventsLoaded && events.length === 0 ? (
+              <CalendarSkeleton />
+            ) : (
+              <CalendarView
+                events={events}
+                onChange={handleEventsChange}
+                onVisibleMonthChange={onVisibleMonthChange}
+              />
+            )
+          ) : !shoppingLoaded && shopping.length === 0 ? (
+            <ShoppingSkeleton />
           ) : (
             <ShoppingListView items={shopping} onChange={handleShoppingChange} />
           )}
           </div>
+        </div>
         </div>
       </main>
 

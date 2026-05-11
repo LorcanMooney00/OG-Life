@@ -140,6 +140,53 @@ export async function resetPassword(email: string) {
   return { success: true, error: null }
 }
 
+/**
+ * Update the user’s display name. Writes to two places:
+ *  - `auth.users.raw_user_meta_data.username` — what the Home greeting reads via
+ *    `user.user_metadata.username`. Supabase fires `USER_UPDATED` so the session
+ *    refreshes automatically.
+ *  - `user_profiles.username` — what linked partners see in Settings.
+ *
+ * The on-auth-user trigger seeds `user_profiles` for new sign-ups, but users
+ * created manually in Supabase (no signup metadata) may have a blank username,
+ * so we upsert here defensively.
+ */
+export async function updateUsername(newUsername: string) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase is not configured' as const }
+  }
+
+  const username = newUsername.trim()
+  if (!username) {
+    return { success: false, error: 'Display name cannot be empty' as const }
+  }
+  if (username.length > 40) {
+    return { success: false, error: 'Display name must be 40 characters or fewer' as const }
+  }
+
+  const { data: authData, error: authErr } = await supabase.auth.updateUser({
+    data: { username },
+  })
+  if (authErr) {
+    return { success: false, error: authErr.message }
+  }
+
+  const uid = authData.user?.id
+  const email = authData.user?.email
+  if (uid && email) {
+    const { error: profErr } = await supabase
+      .from('user_profiles')
+      .upsert({ id: uid, email, username }, { onConflict: 'id' })
+    if (profErr) {
+      // The Home greeting still works (auth metadata is the source of truth),
+      // but partners won’t see the new name until the row exists.
+      console.error('user_profiles upsert (username)', profErr)
+    }
+  }
+
+  return { success: true, error: null as null, username }
+}
+
 export async function updatePassword(newPassword: string) {
   if (!supabase) {
     return { success: false, error: 'Supabase is not configured' }
