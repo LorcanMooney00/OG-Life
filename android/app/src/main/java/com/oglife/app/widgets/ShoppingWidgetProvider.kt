@@ -8,11 +8,11 @@ import android.content.Intent
 import android.widget.RemoteViews
 import com.oglife.app.MainActivity
 import com.oglife.app.R
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import java.util.concurrent.Executors
 
 class ShoppingWidgetProvider : AppWidgetProvider() {
+
+    private val executor = Executors.newSingleThreadExecutor()
 
     override fun onUpdate(
         context: Context,
@@ -42,35 +42,47 @@ class ShoppingWidgetProvider : AppWidgetProvider() {
         )
         views.setOnClickPendingIntent(R.id.widget_shopping_root, pendingIntent)
 
-        // Fetch items in background
-        CoroutineScope(Dispatchers.IO).launch {
-            val session = WidgetSessionManager.load(context)
+        // Show loading state first
+        views.setTextViewText(R.id.widget_shopping_count, "–")
+        views.setTextViewText(R.id.widget_shopping_items, "Loading...")
+        appWidgetManager.updateAppWidget(appWidgetId, views)
 
-            if (session == null || !session.isValid()) {
-                views.setTextViewText(R.id.widget_shopping_count, "–")
-                views.setTextViewText(R.id.widget_shopping_items, "Open app to sign in")
-                appWidgetManager.updateAppWidget(appWidgetId, views)
-                return@launch
-            }
+        // Fetch items in background using executor (safe for BroadcastReceiver)
+        val appContext = context.applicationContext
+        executor.execute {
+            try {
+                val session = WidgetSessionManager.load(appContext)
 
-            val items = SupabaseWidgetClient.fetchShoppingItems(session)
-
-            views.setTextViewText(
-                R.id.widget_shopping_count,
-                if (items.isEmpty()) "✓" else items.size.toString()
-            )
-
-            val text = if (items.isEmpty()) {
-                "All done!"
-            } else {
-                items.take(8).joinToString("\n") { item ->
-                    val qty = item.quantity?.let { " ($it)" } ?: ""
-                    "• ${item.name}$qty"
+                if (session == null || !session.isValid()) {
+                    views.setTextViewText(R.id.widget_shopping_count, "–")
+                    views.setTextViewText(R.id.widget_shopping_items, "Open app to sign in")
+                    appWidgetManager.updateAppWidget(appWidgetId, views)
+                    return@execute
                 }
-            }
 
-            views.setTextViewText(R.id.widget_shopping_items, text)
-            appWidgetManager.updateAppWidget(appWidgetId, views)
+                val items = SupabaseWidgetClient.fetchShoppingItems(session)
+
+                views.setTextViewText(
+                    R.id.widget_shopping_count,
+                    if (items.isEmpty()) "✓" else items.size.toString()
+                )
+
+                val text = if (items.isEmpty()) {
+                    "All done!"
+                } else {
+                    items.take(8).joinToString("\n") { item ->
+                        val qty = item.quantity?.let { " ($it)" } ?: ""
+                        "• ${item.name}$qty"
+                    }
+                }
+
+                views.setTextViewText(R.id.widget_shopping_items, text)
+                appWidgetManager.updateAppWidget(appWidgetId, views)
+            } catch (e: Exception) {
+                views.setTextViewText(R.id.widget_shopping_count, "!")
+                views.setTextViewText(R.id.widget_shopping_items, "Tap to refresh")
+                appWidgetManager.updateAppWidget(appWidgetId, views)
+            }
         }
     }
 

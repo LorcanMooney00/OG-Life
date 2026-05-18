@@ -8,13 +8,13 @@ import android.content.Intent
 import android.widget.RemoteViews
 import com.oglife.app.MainActivity
 import com.oglife.app.R
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.Executors
 
 class CalendarWidgetProvider : AppWidgetProvider() {
+
+    private val executor = Executors.newSingleThreadExecutor()
 
     override fun onUpdate(
         context: Context,
@@ -48,31 +48,38 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         val today = SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(Date())
         views.setTextViewText(R.id.widget_calendar_date, today)
 
-        // Fetch events in background
-        CoroutineScope(Dispatchers.IO).launch {
-            val session = WidgetSessionManager.load(context)
-            
-            if (session == null || !session.isValid()) {
-                views.setTextViewText(R.id.widget_calendar_events, "Open app to sign in")
-                appWidgetManager.updateAppWidget(appWidgetId, views)
-                return@launch
-            }
+        // Show loading state first
+        views.setTextViewText(R.id.widget_calendar_events, "Loading...")
+        appWidgetManager.updateAppWidget(appWidgetId, views)
 
-            val events = SupabaseWidgetClient.fetchUpcomingEvents(session, 7)
-            
-            val text = if (events.isEmpty()) {
-                "Nothing scheduled"
-            } else {
-                events.take(5).joinToString("\n") { event ->
-                    val emoji = if (event.isAnniversary) "🎂 " else ""
-                    val time = event.eventTime?.let { " · $it" } ?: ""
-                    val dateLabel = formatDateLabel(event.eventDate)
-                    "$emoji${event.title}$time\n$dateLabel"
+        // Fetch events in background using executor (safe for BroadcastReceiver)
+        val appContext = context.applicationContext
+        executor.execute {
+            try {
+                val session = WidgetSessionManager.load(appContext)
+                
+                val text = if (session == null || !session.isValid()) {
+                    "Open app to sign in"
+                } else {
+                    val events = SupabaseWidgetClient.fetchUpcomingEvents(session, 7)
+                    if (events.isEmpty()) {
+                        "Nothing scheduled"
+                    } else {
+                        events.take(5).joinToString("\n") { event ->
+                            val emoji = if (event.isAnniversary) "🎂 " else ""
+                            val time = event.eventTime?.let { " · $it" } ?: ""
+                            val dateLabel = formatDateLabel(event.eventDate)
+                            "$emoji${event.title}$time\n$dateLabel"
+                        }
+                    }
                 }
-            }
 
-            views.setTextViewText(R.id.widget_calendar_events, text)
-            appWidgetManager.updateAppWidget(appWidgetId, views)
+                views.setTextViewText(R.id.widget_calendar_events, text)
+                appWidgetManager.updateAppWidget(appWidgetId, views)
+            } catch (e: Exception) {
+                views.setTextViewText(R.id.widget_calendar_events, "Tap to refresh")
+                appWidgetManager.updateAppWidget(appWidgetId, views)
+            }
         }
     }
 
