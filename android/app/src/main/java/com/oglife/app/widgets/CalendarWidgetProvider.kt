@@ -5,13 +5,13 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.widget.RemoteViews
 import com.oglife.app.MainActivity
 import com.oglife.app.R
-import java.text.SimpleDateFormat
-import java.util.*
 import java.util.concurrent.Executors
 
 class CalendarWidgetProvider : AppWidgetProvider() {
@@ -37,8 +37,53 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         appWidgetId: Int
     ) {
         val views = RemoteViews(context.packageName, R.layout.widget_calendar)
+        bindLaunchIntent(context, views)
+        views.setTextViewText(R.id.widget_calendar_date, WidgetFormat.headerDate())
 
-        // Set click to open the app
+        WidgetDataCache.setCalendar(emptyList(), WidgetDataCache.State.LOADING, "Loading…")
+        applyViews(context, appWidgetManager, appWidgetId, views, showList = false, "Loading…")
+
+        executor.execute {
+            val (state, message, events) = fetchCalendar(context)
+            WidgetDataCache.setCalendar(events, state, message)
+
+            val showList = state == WidgetDataCache.State.OK && events.isNotEmpty()
+
+            mainHandler.post {
+                val fresh = RemoteViews(context.packageName, R.layout.widget_calendar)
+                bindLaunchIntent(context, fresh)
+                fresh.setTextViewText(R.id.widget_calendar_date, WidgetFormat.headerDate())
+                applyViews(
+                    context,
+                    appWidgetManager,
+                    appWidgetId,
+                    fresh,
+                    showList = showList,
+                    emptyText = message
+                )
+            }
+        }
+    }
+
+    private fun fetchCalendar(context: Context): Triple<WidgetDataCache.State, String, List<CalendarEventWidget>> {
+        return try {
+            val session = WidgetSessionManager.load(context)
+            if (session == null || !session.isValid()) {
+                Triple(WidgetDataCache.State.SIGNED_OUT, "Sign in to see events", emptyList())
+            } else {
+                val events = SupabaseWidgetClient.fetchUpcomingEvents(session, 7)
+                if (events.isEmpty()) {
+                    Triple(WidgetDataCache.State.EMPTY, "Nothing coming up this week", emptyList())
+                } else {
+                    Triple(WidgetDataCache.State.OK, "", events.take(6))
+                }
+            }
+        } catch (_: Exception) {
+            Triple(WidgetDataCache.State.ERROR, "Couldn't load — tap to open", emptyList())
+        }
+    }
+
+    private fun bindLaunchIntent(context: Context, views: RemoteViews) {
         val intent = Intent(context, MainActivity::class.java).apply {
             putExtra("screen", "calendar")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -48,70 +93,32 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(R.id.widget_calendar_root, pendingIntent)
+    }
 
-        // Show today's date
-        val today = SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(Date())
-        views.setTextViewText(R.id.widget_calendar_date, today)
-        views.setTextViewText(R.id.widget_calendar_events, "Loading...")
+    private fun applyViews(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        views: RemoteViews,
+        showList: Boolean,
+        emptyText: String
+    ) {
+        val serviceIntent = Intent(context, CalendarWidgetService::class.java).apply {
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+            data = Uri.parse("oglife://widget/calendar/$appWidgetId")
+        }
+        views.setRemoteAdapter(R.id.widget_list, serviceIntent)
+
+        if (showList) {
+            views.setViewVisibility(R.id.widget_list, View.VISIBLE)
+            views.setViewVisibility(R.id.widget_empty, View.GONE)
+        } else {
+            views.setViewVisibility(R.id.widget_list, View.GONE)
+            views.setViewVisibility(R.id.widget_empty, View.VISIBLE)
+            views.setTextViewText(R.id.widget_empty, emptyText)
+        }
+
         appWidgetManager.updateAppWidget(appWidgetId, views)
-
-        // Fetch data in background
-        executor.execute {
-            val text = try {
-                val session = WidgetSessionManager.load(context)
-                if (session == null || !session.isValid()) {
-                    "Sign in to see events"
-                } else {
-                    val events = SupabaseWidgetClient.fetchUpcomingEvents(session, 7)
-                    if (events.isEmpty()) {
-                        "Nothing scheduled"
-                    } else {
-                        events.take(4).joinToString("\n") { event ->
-                            val emoji = if (event.isAnniversary) "🎂 " else ""
-                            val time = event.eventTime?.let { " $it" } ?: ""
-                            val dateLabel = formatDateLabel(event.eventDate)
-                            "$emoji${event.title}$time · $dateLabel"
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                "Tap to refresh"
-            }
-
-            // Update on main thread
-            mainHandler.post {
-                views.setTextViewText(R.id.widget_calendar_events, text)
-                appWidgetManager.updateAppWidget(appWidgetId, views)
-            }
-        }
-    }
-
-    private fun formatDateLabel(dateStr: String): String {
-        return try {
-            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-            val date = sdf.parse(dateStr) ?: return dateStr
-            
-            val today = Calendar.getInstance()
-            val eventCal = Calendar.getInstance().apply { time = date }
-            
-            val diffDays = ((eventCal.timeInMillis - today.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
-            
-            when {
-                diffDays == 0 -> "Today"
-                diffDays == 1 -> "Tomorrow"
-                diffDays in 2..6 -> SimpleDateFormat("EEEE", Locale.getDefault()).format(date)
-                else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(date)
-            }
-        } catch (e: Exception) {
-            dateStr
-        }
-    }
-
-    override fun onEnabled(context: Context) {
-        // First widget placed
-    }
-
-    override fun onDisabled(context: Context) {
-        // Last widget removed
+        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list)
     }
 }

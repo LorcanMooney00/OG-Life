@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="og_widget_bg">#FF1C1618</color>
+    <color name="og_widget_bg_top">#FF2A201C</color>
+    <color name="og_widget_surface">#FF26201F</color>
+    <color name="og_widget_text_primary">#FFF5F5F4</color>
+    <color name="og_widget_text_secondary">#FFA8A29E</color>
+    <color name="og_widget_text_muted">#FF78716C</color>
+    <color name="og_widget_accent">#FFF59E0B</color>
+    <color name="og_widget_accent_dark">#FF1C1618</color>
+    <color name="og_widget_divider">#14FFFFFF</color>
+    <color name="og_widget_ring">#40FFFFFF</color>
+</resources>

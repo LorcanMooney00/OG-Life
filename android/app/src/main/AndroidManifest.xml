@@ -59,6 +59,16 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_shopping_info" />
         </receiver>
+
+        <service
+            android:name=".widgets.ShoppingWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+        <service
+            android:name=".widgets.CalendarWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
     </application>
 
     <!-- Permissions -->

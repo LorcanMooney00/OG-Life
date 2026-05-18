@@ -5,8 +5,10 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.widget.RemoteViews
 import com.oglife.app.MainActivity
 import com.oglife.app.R
@@ -35,8 +37,61 @@ class ShoppingWidgetProvider : AppWidgetProvider() {
         appWidgetId: Int
     ) {
         val views = RemoteViews(context.packageName, R.layout.widget_shopping)
+        bindLaunchIntent(context, views)
 
-        // Set click to open the app
+        WidgetDataCache.setShopping(emptyList(), WidgetDataCache.State.LOADING, "Loading…")
+        applyViews(context, appWidgetManager, appWidgetId, views, showList = false, "Loading…")
+        views.setTextViewText(R.id.widget_shopping_count, "–")
+
+        executor.execute {
+            val (state, message, items) = fetchShopping(context)
+            WidgetDataCache.setShopping(items, state, message)
+
+            val badge = when (state) {
+                WidgetDataCache.State.OK -> items.size.toString()
+                WidgetDataCache.State.EMPTY -> "✓"
+                WidgetDataCache.State.SIGNED_OUT -> "–"
+                WidgetDataCache.State.ERROR -> "!"
+                WidgetDataCache.State.LOADING -> "–"
+            }
+
+            val showList = state == WidgetDataCache.State.OK && items.isNotEmpty()
+
+            mainHandler.post {
+                val fresh = RemoteViews(context.packageName, R.layout.widget_shopping)
+                bindLaunchIntent(context, fresh)
+                fresh.setTextViewText(R.id.widget_shopping_count, badge)
+                applyViews(
+                    context,
+                    appWidgetManager,
+                    appWidgetId,
+                    fresh,
+                    showList = showList,
+                    emptyText = message
+                )
+            }
+        }
+    }
+
+    private fun fetchShopping(context: Context): Triple<WidgetDataCache.State, String, List<ShoppingItemWidget>> {
+        return try {
+            val session = WidgetSessionManager.load(context)
+            if (session == null || !session.isValid()) {
+                Triple(WidgetDataCache.State.SIGNED_OUT, "Sign in to see your list", emptyList())
+            } else {
+                val items = SupabaseWidgetClient.fetchShoppingItems(session)
+                if (items.isEmpty()) {
+                    Triple(WidgetDataCache.State.EMPTY, "All done — nothing to grab", emptyList())
+                } else {
+                    Triple(WidgetDataCache.State.OK, "", items.take(8))
+                }
+            }
+        } catch (_: Exception) {
+            Triple(WidgetDataCache.State.ERROR, "Couldn't load — tap to open", emptyList())
+        }
+    }
+
+    private fun bindLaunchIntent(context: Context, views: RemoteViews) {
         val intent = Intent(context, MainActivity::class.java).apply {
             putExtra("screen", "shopping")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -46,48 +101,32 @@ class ShoppingWidgetProvider : AppWidgetProvider() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(R.id.widget_shopping_root, pendingIntent)
+    }
 
-        views.setTextViewText(R.id.widget_shopping_count, "–")
-        views.setTextViewText(R.id.widget_shopping_items, "Loading...")
-        appWidgetManager.updateAppWidget(appWidgetId, views)
-
-        // Fetch data in background
-        executor.execute {
-            val result = try {
-                val session = WidgetSessionManager.load(context)
-                if (session == null || !session.isValid()) {
-                    Pair("–", "Sign in to see list")
-                } else {
-                    val items = SupabaseWidgetClient.fetchShoppingItems(session)
-                    if (items.isEmpty()) {
-                        Pair("✓", "All done!")
-                    } else {
-                        val count = items.size.toString()
-                        val text = items.take(6).joinToString("\n") { item ->
-                            val qty = item.quantity?.let { " ($it)" } ?: ""
-                            "• ${item.name}$qty"
-                        }
-                        Pair(count, text)
-                    }
-                }
-            } catch (e: Exception) {
-                Pair("!", "Tap to refresh")
-            }
-
-            // Update on main thread
-            mainHandler.post {
-                views.setTextViewText(R.id.widget_shopping_count, result.first)
-                views.setTextViewText(R.id.widget_shopping_items, result.second)
-                appWidgetManager.updateAppWidget(appWidgetId, views)
-            }
+    private fun applyViews(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        views: RemoteViews,
+        showList: Boolean,
+        emptyText: String
+    ) {
+        val serviceIntent = Intent(context, ShoppingWidgetService::class.java).apply {
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+            data = Uri.parse("oglife://widget/shopping/$appWidgetId")
         }
-    }
+        views.setRemoteAdapter(R.id.widget_list, serviceIntent)
 
-    override fun onEnabled(context: Context) {
-        // First widget placed
-    }
+        if (showList) {
+            views.setViewVisibility(R.id.widget_list, View.VISIBLE)
+            views.setViewVisibility(R.id.widget_empty, View.GONE)
+        } else {
+            views.setViewVisibility(R.id.widget_list, View.GONE)
+            views.setViewVisibility(R.id.widget_empty, View.VISIBLE)
+            views.setTextViewText(R.id.widget_empty, emptyText)
+        }
 
-    override fun onDisabled(context: Context) {
-        // Last widget removed
+        appWidgetManager.updateAppWidget(appWidgetId, views)
+        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list)
     }
 }
