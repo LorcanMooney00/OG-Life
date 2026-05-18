@@ -72,11 +72,18 @@ class ShoppingWidgetProvider : AppWidgetProvider() {
             if (session == null || !session.isValid()) {
                 Triple("–", "Sign in to see your list", emptyList())
             } else {
-                val items = SupabaseWidgetClient.fetchShoppingItems(session)
-                if (items.isEmpty()) {
-                    Triple("✓", "All done — nothing to grab", emptyList())
-                } else {
-                    Triple(items.size.toString(), "", items.take(5))
+                when (val result = SupabaseWidgetClient.fetchShoppingItems(session)) {
+                    is WidgetFetchResult.Success -> {
+                        val items = result.data
+                        if (items.isEmpty()) {
+                            Triple("✓", "All done — nothing to grab", emptyList())
+                        } else {
+                            Triple(items.size.toString(), "", items.take(5))
+                        }
+                    }
+                    is WidgetFetchResult.Failure -> {
+                        Triple("!", "Couldn't load list — open app", emptyList())
+                    }
                 }
             }
         } catch (_: Exception) {
