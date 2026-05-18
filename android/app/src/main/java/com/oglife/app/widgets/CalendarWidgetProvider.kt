@@ -10,11 +10,8 @@ import com.oglife.app.MainActivity
 import com.oglife.app.R
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.concurrent.Executors
 
 class CalendarWidgetProvider : AppWidgetProvider() {
-
-    private val executor = Executors.newSingleThreadExecutor()
 
     override fun onUpdate(
         context: Context,
@@ -31,55 +28,30 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetId: Int
     ) {
-        val views = RemoteViews(context.packageName, R.layout.widget_calendar)
+        try {
+            val views = RemoteViews(context.packageName, R.layout.widget_calendar)
 
-        // Set click to open the app on the calendar tab
-        val intent = Intent(context, MainActivity::class.java).apply {
-            putExtra("screen", "calendar")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        views.setOnClickPendingIntent(R.id.widget_calendar_root, pendingIntent)
-
-        // Show today's date in header
-        val today = SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(Date())
-        views.setTextViewText(R.id.widget_calendar_date, today)
-
-        // Show loading state first
-        views.setTextViewText(R.id.widget_calendar_events, "Loading...")
-        appWidgetManager.updateAppWidget(appWidgetId, views)
-
-        // Fetch events in background using executor (safe for BroadcastReceiver)
-        val appContext = context.applicationContext
-        executor.execute {
-            try {
-                val session = WidgetSessionManager.load(appContext)
-                
-                val text = if (session == null || !session.isValid()) {
-                    "Open app to sign in"
-                } else {
-                    val events = SupabaseWidgetClient.fetchUpcomingEvents(session, 7)
-                    if (events.isEmpty()) {
-                        "Nothing scheduled"
-                    } else {
-                        events.take(5).joinToString("\n") { event ->
-                            val emoji = if (event.isAnniversary) "🎂 " else ""
-                            val time = event.eventTime?.let { " · $it" } ?: ""
-                            val dateLabel = formatDateLabel(event.eventDate)
-                            "$emoji${event.title}$time\n$dateLabel"
-                        }
-                    }
-                }
-
-                views.setTextViewText(R.id.widget_calendar_events, text)
-                appWidgetManager.updateAppWidget(appWidgetId, views)
-            } catch (e: Exception) {
-                views.setTextViewText(R.id.widget_calendar_events, "Tap to refresh")
-                appWidgetManager.updateAppWidget(appWidgetId, views)
+            // Set click to open the app on the calendar tab
+            val intent = Intent(context, MainActivity::class.java).apply {
+                putExtra("screen", "calendar")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
+            val pendingIntent = PendingIntent.getActivity(
+                context, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setOnClickPendingIntent(R.id.widget_calendar_root, pendingIntent)
+
+            // Show today's date in header
+            val today = SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(Date())
+            views.setTextViewText(R.id.widget_calendar_date, today)
+
+            // Just show static content for now - no network calls
+            views.setTextViewText(R.id.widget_calendar_events, "Tap to open calendar")
+
+            appWidgetManager.updateAppWidget(appWidgetId, views)
+        } catch (e: Exception) {
+            // Silently fail
         }
     }
 

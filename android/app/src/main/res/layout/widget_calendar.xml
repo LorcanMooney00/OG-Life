@@ -5,50 +5,32 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="@drawable/widget_background">
+    android:background="#DD1C1618">
 
-    <LinearLayout
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:text="📅 Calendar"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold" />
 
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="📅 Calendar"
-            android:textColor="#FFFBEB"
-            android:textSize="14sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/widget_calendar_date"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Today"
-            android:textColor="#FCD34D"
-            android:textSize="11sp" />
-
-    </LinearLayout>
-
-    <View
+    <TextView
+        android:id="@+id/widget_calendar_date"
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="12dp"
-        android:background="#33FFFFFF" />
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Today"
+        android:textColor="#FCD34D"
+        android:textSize="12sp" />
 
     <TextView
         android:id="@+id/widget_calendar_events"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
         android:text="Loading..."
-        android:textColor="#E5E5E5"
-        android:textSize="13sp"
-        android:lineSpacingMultiplier="1.4"
-        android:ellipsize="end"
-        android:gravity="top" />
+        android:textColor="#CCCCCC"
+        android:textSize="13sp" />
 
 </LinearLayout>
