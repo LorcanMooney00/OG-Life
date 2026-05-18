@@ -7,36 +7,29 @@ import com.oglife.app.R
 object WidgetRows {
 
     private val shoppingRowIds = intArrayOf(R.id.row0, R.id.row1, R.id.row2, R.id.row3, R.id.row4)
-    private val shoppingNameIds = intArrayOf(R.id.row0_name, R.id.row1_name, R.id.row2_name, R.id.row3_name, R.id.row4_name)
-
     private val calendarRowIds = intArrayOf(R.id.row0, R.id.row1, R.id.row2, R.id.row3)
-    private val calendarTimeIds = intArrayOf(R.id.row0_time, R.id.row1_time, R.id.row2_time, R.id.row3_time)
-    private val calendarTitleIds = intArrayOf(R.id.row0_title, R.id.row1_title, R.id.row2_title, R.id.row3_title)
-    private val calendarWhenIds = intArrayOf(R.id.row0_when, R.id.row1_when, R.id.row2_when, R.id.row3_when)
 
     fun bindShopping(
         views: RemoteViews,
         items: List<ShoppingItemWidget>,
         emptyMessage: String,
     ) {
+        hideAllRows(views, shoppingRowIds)
+
         if (items.isEmpty()) {
-            views.setViewVisibility(R.id.widget_rows, View.GONE)
             views.setViewVisibility(R.id.widget_empty, View.VISIBLE)
             views.setTextViewText(R.id.widget_empty, emptyMessage)
             return
         }
 
-        views.setViewVisibility(R.id.widget_rows, View.VISIBLE)
         views.setViewVisibility(R.id.widget_empty, View.GONE)
 
         for (i in shoppingRowIds.indices) {
             if (i < items.size) {
                 val item = items[i]
+                val line = item.quantity?.let { "○  ${item.name}  ·  $it" } ?: "○  ${item.name}"
+                views.setTextViewText(shoppingRowIds[i], line)
                 views.setViewVisibility(shoppingRowIds[i], View.VISIBLE)
-                val label = item.quantity?.let { "${item.name}  ·  $it" } ?: item.name
-                views.setTextViewText(shoppingNameIds[i], label)
-            } else {
-                views.setViewVisibility(shoppingRowIds[i], View.GONE)
             }
         }
     }
@@ -46,27 +39,32 @@ object WidgetRows {
         events: List<CalendarEventWidget>,
         emptyMessage: String,
     ) {
+        hideAllRows(views, calendarRowIds)
+
         if (events.isEmpty()) {
-            views.setViewVisibility(R.id.widget_rows, View.GONE)
             views.setViewVisibility(R.id.widget_empty, View.VISIBLE)
             views.setTextViewText(R.id.widget_empty, emptyMessage)
             return
         }
 
-        views.setViewVisibility(R.id.widget_rows, View.VISIBLE)
         views.setViewVisibility(R.id.widget_empty, View.GONE)
 
         for (i in calendarRowIds.indices) {
             if (i < events.size) {
                 val event = events[i]
-                views.setViewVisibility(calendarRowIds[i], View.VISIBLE)
                 val prefix = if (event.isAnniversary) "🎂 " else ""
-                views.setTextViewText(calendarTitleIds[i], prefix + event.title)
-                views.setTextViewText(calendarTimeIds[i], WidgetFormat.formatEventTime(event.eventTime))
-                views.setTextViewText(calendarWhenIds[i], WidgetFormat.formatDateLabel(event.eventDate))
-            } else {
-                views.setViewVisibility(calendarRowIds[i], View.GONE)
+                val time = WidgetFormat.formatEventTime(event.eventTime)
+                val whenLabel = WidgetFormat.formatDateLabel(event.eventDate)
+                val line = "$time   $prefix${event.title}\n$whenLabel"
+                views.setTextViewText(calendarRowIds[i], line)
+                views.setViewVisibility(calendarRowIds[i], View.VISIBLE)
             }
+        }
+    }
+
+    private fun hideAllRows(views: RemoteViews, rowIds: IntArray) {
+        for (id in rowIds) {
+            views.setViewVisibility(id, View.GONE)
         }
     }
 }
