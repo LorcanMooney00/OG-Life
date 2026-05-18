@@ -13,6 +13,10 @@ import {
   unlinkOneSignalUserForSignOut,
 } from './onesignal'
 import { isSupabaseConfigured, supabase } from './supabaseClient'
+import {
+  clearWidgetSession,
+  syncWidgetSessionFromSupabase,
+} from './widgetBridge'
 
 type AuthContextValue = {
   user: User | null
@@ -49,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       setLoading(false)
+      if (session) void syncWidgetSessionFromSupabase()
     })
 
     const {
@@ -56,10 +61,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       setLoading(false)
+      if (session) {
+        void syncWidgetSessionFromSupabase()
+      } else {
+        void clearWidgetSession()
+      }
     })
 
     return () => subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!user?.id) return
+    void syncWidgetSessionFromSupabase()
+  }, [user?.id])
 
   useEffect(() => {
     if (!isSupabaseConfigured) return
@@ -119,6 +134,7 @@ export async function signOut() {
   const { data: sessionData } = await supabase.auth.getSession()
   const uid = sessionData.session?.user?.id
   await unlinkOneSignalUserForSignOut(uid)
+  await clearWidgetSession()
   return supabase.auth.signOut({ scope: 'local' })
 }
 

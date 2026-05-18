@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">OG Life</string>
+    <string name="title_activity_main">OG Life</string>
+    <string name="package_name">com.oglife.app</string>
+    <string name="custom_url_scheme">com.oglife.app</string>
+    <string name="widget_calendar_description">Shows your upcoming calendar events</string>
+    <string name="widget_shopping_description">Shows your shopping list items</string>
+</resources>
