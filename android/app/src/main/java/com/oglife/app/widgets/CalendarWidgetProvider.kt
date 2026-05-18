@@ -5,10 +5,8 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
-import android.view.View
 import android.widget.RemoteViews
 import com.oglife.app.MainActivity
 import com.oglife.app.R
@@ -36,54 +34,24 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetId: Int
     ) {
-        val views = RemoteViews(context.packageName, R.layout.widget_calendar)
-        bindLaunchIntent(context, views)
+        val views = buildViews(context)
         views.setTextViewText(R.id.widget_calendar_date, WidgetFormat.headerDate())
-
-        WidgetDataCache.setCalendar(emptyList(), WidgetDataCache.State.LOADING, "Loading…")
-        applyViews(context, appWidgetManager, appWidgetId, views, showList = false, "Loading…")
+        WidgetRows.bindCalendar(views, emptyList(), "Loading…")
+        appWidgetManager.updateAppWidget(appWidgetId, views)
 
         executor.execute {
-            val (state, message, events) = fetchCalendar(context)
-            WidgetDataCache.setCalendar(events, state, message)
-
-            val showList = state == WidgetDataCache.State.OK && events.isNotEmpty()
-
+            val (message, events) = fetchCalendar(context)
             mainHandler.post {
-                val fresh = RemoteViews(context.packageName, R.layout.widget_calendar)
-                bindLaunchIntent(context, fresh)
+                val fresh = buildViews(context)
                 fresh.setTextViewText(R.id.widget_calendar_date, WidgetFormat.headerDate())
-                applyViews(
-                    context,
-                    appWidgetManager,
-                    appWidgetId,
-                    fresh,
-                    showList = showList,
-                    emptyText = message
-                )
+                WidgetRows.bindCalendar(fresh, events, message)
+                appWidgetManager.updateAppWidget(appWidgetId, fresh)
             }
         }
     }
 
-    private fun fetchCalendar(context: Context): Triple<WidgetDataCache.State, String, List<CalendarEventWidget>> {
-        return try {
-            val session = WidgetSessionManager.load(context)
-            if (session == null || !session.isValid()) {
-                Triple(WidgetDataCache.State.SIGNED_OUT, "Sign in to see events", emptyList())
-            } else {
-                val events = SupabaseWidgetClient.fetchUpcomingEvents(session, 7)
-                if (events.isEmpty()) {
-                    Triple(WidgetDataCache.State.EMPTY, "Nothing coming up this week", emptyList())
-                } else {
-                    Triple(WidgetDataCache.State.OK, "", events.take(6))
-                }
-            }
-        } catch (_: Exception) {
-            Triple(WidgetDataCache.State.ERROR, "Couldn't load — tap to open", emptyList())
-        }
-    }
-
-    private fun bindLaunchIntent(context: Context, views: RemoteViews) {
+    private fun buildViews(context: Context): RemoteViews {
+        val views = RemoteViews(context.packageName, R.layout.widget_calendar)
         val intent = Intent(context, MainActivity::class.java).apply {
             putExtra("screen", "calendar")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -93,32 +61,26 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(R.id.widget_calendar_root, pendingIntent)
+        return views
     }
 
-    private fun applyViews(
+    private fun fetchCalendar(
         context: Context,
-        appWidgetManager: AppWidgetManager,
-        appWidgetId: Int,
-        views: RemoteViews,
-        showList: Boolean,
-        emptyText: String
-    ) {
-        val serviceIntent = Intent(context, CalendarWidgetService::class.java).apply {
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-            data = Uri.parse("oglife://widget/calendar/$appWidgetId")
+    ): Pair<String, List<CalendarEventWidget>> {
+        return try {
+            val session = WidgetSessionManager.load(context)
+            if (session == null || !session.isValid()) {
+                Pair("Sign in to see events", emptyList())
+            } else {
+                val events = SupabaseWidgetClient.fetchUpcomingEvents(session, 7)
+                if (events.isEmpty()) {
+                    Pair("Nothing coming up this week", emptyList())
+                } else {
+                    Pair("", events.take(4))
+                }
+            }
+        } catch (_: Exception) {
+            Pair("Couldn't load — tap to open", emptyList())
         }
-        views.setRemoteAdapter(R.id.widget_list, serviceIntent)
-
-        if (showList) {
-            views.setViewVisibility(R.id.widget_list, View.VISIBLE)
-            views.setViewVisibility(R.id.widget_empty, View.GONE)
-        } else {
-            views.setViewVisibility(R.id.widget_list, View.GONE)
-            views.setViewVisibility(R.id.widget_empty, View.VISIBLE)
-            views.setTextViewText(R.id.widget_empty, emptyText)
-        }
-
-        appWidgetManager.updateAppWidget(appWidgetId, views)
-        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list)
     }
 }

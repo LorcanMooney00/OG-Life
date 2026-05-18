@@ -6,7 +6,6 @@
     android:minResizeHeight="120dp"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_shopping"
-    android:previewLayout="@layout/widget_shopping"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:description="@string/widget_shopping_description" />
