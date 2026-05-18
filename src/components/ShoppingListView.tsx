@@ -16,6 +16,7 @@ import {
 import type { ShoppingItem } from '../types'
 import { createId } from '../lib/id'
 import { haptic } from '../lib/haptics'
+import { DEFAULT_SHOPPING_QUANTITY, displayQuantity } from '../lib/shoppingDisplay'
 import {
   CheckmarkIcon,
   ChevronDown,
@@ -91,7 +92,7 @@ export function ShoppingListView({ items, onChange }: Props) {
     const next: ShoppingItem = {
       id: createId(),
       name: trimmed,
-      quantity: null,
+      quantity: DEFAULT_SHOPPING_QUANTITY,
       purchased: false,
       sortOrder: maxSort + 1,
       createdAt: new Date().toISOString(),
@@ -300,11 +301,9 @@ export function ShoppingListView({ items, onChange }: Props) {
                       <span className="text-[17px] font-normal leading-snug text-[#8e8e93] line-through">
                         {item.name}
                       </span>
-                      {item.quantity ? (
-                        <span className="text-[15px] leading-snug text-[#636366] line-through">
-                          {item.quantity}
-                        </span>
-                      ) : null}
+                      <span className="text-[15px] leading-snug text-[#636366] line-through">
+                        {displayQuantity(item.quantity)}
+                      </span>
                     </button>
                   </li>
                 ))}

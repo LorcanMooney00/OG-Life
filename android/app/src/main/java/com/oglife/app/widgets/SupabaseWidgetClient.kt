@@ -126,7 +126,7 @@ object SupabaseWidgetClient {
         val arr = JSONArray(body)
         return (0 until arr.length()).map { i ->
             val obj = arr.getJSONObject(i)
-            val qty = obj.optString("quantity", "").trim().ifBlank { null }
+            val qty = obj.optString("quantity", "").trim().ifBlank { "1" }
             ShoppingItemWidget(
                 id = obj.optString("id", ""),
                 name = obj.optString("item_name", "Item"),

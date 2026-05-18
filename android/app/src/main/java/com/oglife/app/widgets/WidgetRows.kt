@@ -27,7 +27,8 @@ object WidgetRows {
         for (i in shoppingRowIds.indices) {
             if (i < items.size) {
                 val item = items[i]
-                val line = item.quantity?.let { "○  ${item.name}  ·  $it" } ?: "○  ${item.name}"
+                val qty = item.quantity?.trim()?.takeIf { it.isNotEmpty() } ?: "1"
+                val line = "○  ${item.name}  ·  $qty"
                 views.setTextViewText(shoppingRowIds[i], line)
                 views.setViewVisibility(shoppingRowIds[i], View.VISIBLE)
             }

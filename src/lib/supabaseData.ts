@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CalendarEvent, ShoppingItem } from '../types'
 import { toYmd } from './date'
+import { normalizeQuantity } from './shoppingDisplay'
 
 // `*` keeps the SELECT working when (optional) columns haven’t been added to
 // the Supabase project yet — the row mapper reads them defensively. Applies
@@ -88,7 +89,7 @@ export function rowToShoppingItem(r: ShoppingRow): ShoppingItem {
   return {
     id: r.id,
     name: r.item_name,
-    quantity: r.quantity,
+    quantity: normalizeQuantity(r.quantity),
     purchased: r.purchased,
     sortOrder: r.sort_order ?? 0,
     createdAt: r.created_at,
@@ -203,7 +204,7 @@ function shoppingPayload(i: ShoppingItem, userId: string) {
     id: i.id,
     created_by: userId,
     item_name: i.name,
-    quantity: i.quantity,
+    quantity: normalizeQuantity(i.quantity),
     purchased: i.purchased,
   }
   // Only attach sort_order when the column is known to exist; otherwise

@@ -9,6 +9,7 @@ import { PullToRefreshIndicator } from './components/PullToRefreshIndicator'
 import { TabSwitcher } from './components/TabSwitcher'
 import { useInstallPrompt } from './contexts/InstallPromptContext'
 import { useAuth } from './lib/auth'
+import { displayQuantity } from './lib/shoppingDisplay'
 import {
   anniversaryCountdownLabel,
   anniversaryEmoji,
@@ -722,11 +723,9 @@ export default function OgLifeApp() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[15px] text-white">{item.name}</p>
                         </div>
-                        {item.quantity ? (
-                          <span className="flex-shrink-0 rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] text-[#a1a1aa]">
-                            {item.quantity}
-                          </span>
-                        ) : null}
+                        <span className="flex-shrink-0 rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] text-[#a1a1aa]">
+                          {displayQuantity(item.quantity)}
+                        </span>
                       </div>
                     ))}
                     {shoppingRemaining > 5 ? (

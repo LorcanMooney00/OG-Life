@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { displayQuantity, normalizeQuantity } from '../../lib/shoppingDisplay'
 import type { ShoppingItem } from '../../types'
 
 type Props = {
@@ -26,7 +27,7 @@ export function ShoppingEditSheet({ item, onClose, onSave, onDelete }: Props) {
   useEffect(() => {
     if (!item) return
     setDraftName(item.name)
-    setDraftQty(item.quantity ?? '')
+    setDraftQty(displayQuantity(item.quantity))
   }, [item])
 
   if (!item) return null
@@ -34,7 +35,7 @@ export function ShoppingEditSheet({ item, onClose, onSave, onDelete }: Props) {
   const save = () => {
     const name = draftName.trim()
     if (!name) return
-    onSave({ name, quantity: draftQty.trim() || null })
+    onSave({ name, quantity: normalizeQuantity(draftQty) })
   }
 
   return (

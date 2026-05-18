@@ -16,6 +16,7 @@ import {
   occurrencesOnDate,
 } from '../lib/calendarOccurrences'
 import type { EventOccurrence } from '../lib/calendarOccurrences'
+import { displayQuantity } from '../lib/shoppingDisplay'
 import type { CalendarEvent, ShoppingItem } from '../types'
 
 export type SwitcherScreen = 'calendar' | 'home' | 'shopping'
@@ -717,11 +718,9 @@ function ShoppingPreview({ items }: { items: ShoppingItem[] }) {
                   <span className="truncate text-[12px] text-white">
                     {item.name}
                   </span>
-                  {item.quantity ? (
-                    <span className="ml-auto flex-shrink-0 rounded-full bg-white/[0.08] px-1.5 py-px text-[9px] text-white/65">
-                      {item.quantity}
-                    </span>
-                  ) : null}
+                  <span className="ml-auto flex-shrink-0 rounded-full bg-white/[0.08] px-1.5 py-px text-[9px] text-white/65">
+                    {displayQuantity(item.quantity)}
+                  </span>
                 </div>
               ))}
               {active.length > previewActive.length ? (

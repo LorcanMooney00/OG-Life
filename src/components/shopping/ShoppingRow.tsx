@@ -1,6 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { ShoppingItem } from '../../types'
+import { displayQuantity } from '../../lib/shoppingDisplay'
 import { IconGrip } from './ShoppingIcons'
 
 type Props = {
@@ -70,11 +71,9 @@ export function ShoppingRow({
         <span className="text-[17px] font-normal leading-snug text-white">
           {item.name}
         </span>
-        {item.quantity ? (
-          <span className="text-[15px] leading-snug text-[#8e8e93]">
-            {item.quantity}
-          </span>
-        ) : null}
+        <span className="text-[15px] leading-snug text-[#8e8e93]">
+          {displayQuantity(item.quantity)}
+        </span>
       </button>
       {draggable ? (
         <button
